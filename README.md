@@ -89,10 +89,10 @@ SUPABASE_KEY=<your-anon-key>
 FLASK_ENV=development
 FLASK_PORT=5000
 RFID_DEVICE=/dev/input/event2   # Linux/Mac only
-DOOR_ROOM=101                   # Room number for this door unit
+DOOR_ROOM=301                   # Room number for this door unit
 ```
 
-See [Environment Variable Guide](#environment-variable-guide) for details.
+> **Note:** `app.py` uses `find_dotenv()` to locate the `.env` file, so it will be found even if you run the script from a subdirectory.  If `SUPABASE_URL` or `SUPABASE_KEY` are missing the app will print a clear error message and exit immediately.
 
 ### 4. Set up Supabase tables
 
@@ -160,21 +160,27 @@ Receives a scan event from a KUPPI card.
 **Body (JSON):**
 ```json
 {
-  "card_uid": "ABC123",
-  "tag_uid":  "TAG-101-BED",
+  "card_uid": "KUPPI-001",
+  "tag_uid":  "BC590C4E",
   "area":     "Bed",
-  "room":     "101"
+  "room":     "301"
 }
 ```
 
+**Notes:**
+- `area` must be one of the six known zone names (`Toilet`, `Wardrobe`, `Study Desk`, `Bed`, `Curtain`, `Drinks Bar`); otherwise returns **400**.
+- Returns **400** if no active session exists for the card/room combination.
+- Returns **200** with `"status": "already_scanned"` if the zone was already recorded in the current session (idempotent).
+- Returns **201** with the inserted scan object on success.
+
 ### `POST /session/open`
-Opens a new cleaning session (called automatically by the door RFID listener, or manually).
+Opens a new cleaning session (called automatically by the door RFID listener on the first card tap, or manually).  Any previously active session for the same room is automatically closed as `incomplete` before the new session is created.
 
 **Body (JSON):**
 ```json
 {
-  "card_uid": "ABC123",
-  "room":     "101"
+  "card_uid": "KUPPI-001",
+  "room":     "301"
 }
 ```
 
@@ -184,8 +190,8 @@ Closes a session.  Marks it `complete` if all 6 zones were scanned, otherwise `i
 **Body (JSON):**
 ```json
 {
-  "card_uid": "ABC123",
-  "room":     "101"
+  "card_uid": "KUPPI-001",
+  "room":     "301"
 }
 ```
 
@@ -196,12 +202,13 @@ Returns JSON array of all rooms with current status.
 ```json
 [
   {
-    "room":       "101",
-    "status":     "active",
-    "zones_done": 3,
-    "scanned":    ["Bed", "Toilet", "Wardrobe"],
-    "missing":    ["Curtain", "Drinks Bar", "Study Desk"],
-    "start_time": "2024-01-01T10:00:00+00:00"
+    "room":        "301",
+    "status":      "active",
+    "zones_done":  3,
+    "zones_total": 6,
+    "scanned":     ["Bed", "Toilet", "Wardrobe"],
+    "missing":     ["Curtain", "Drinks Bar", "Study Desk"],
+    "start_time":  "2024-01-01T10:00:00+00:00"
   }
 ]
 ```
@@ -250,7 +257,7 @@ const char* WIFI_PASSWORD = "YourPassword";
 const char* SERVER_IP     = "192.168.1.100";   // IP of the machine running app.py
 const int   SERVER_PORT   = 5000;
 const char* CARD_UID      = "KUPPI-001";        // Unique ID for this card
-const char* ROOM_NUMBER   = "101";              // Room this card is assigned to
+const char* ROOM_NUMBER   = "301";              // Room this card is assigned to
 ```
 
 Also update `zoneUIDs` with the actual UID bytes read from your NFC tags for the six zones.
@@ -272,14 +279,12 @@ Also update `zoneUIDs` with the actual UID bytes read from your NFC tags for the
 
 ## How the Door Unit Works
 
-A USB RFID reader is plugged into the computer running `app.py`.  When a staff member taps their card at the door:
+A USB RFID reader is plugged into the computer running `app.py`.  The background thread implements a **tap-to-toggle** model:
 
-- **Windows** — the `keyboard` library captures the HID key sequence emitted by the USB reader and assembles the UID from keystrokes terminated by Enter.
-- **Linux / Mac** — the `evdev` library reads raw key events from the device specified by `RFID_DEVICE`.
+- **First tap** — opens a new `active` session for the room.  Any previously stale active session for the same room is closed as `incomplete` first.
+- **Second tap** — closes the session.  Status is set to `complete` if all six zones were scanned, otherwise `incomplete`.
 
-On tap the background thread calls the open-session logic directly, inserting a new `active` session for the room number set in `DOOR_ROOM`.
-
-To manage multiple rooms from a single server, run one Flask instance per door (each with its own `DOOR_ROOM` and `FLASK_PORT`), or extend `app.py` with a room-selection lookup based on UID.
+On **Windows** the `keyboard` library captures the HID key sequence emitted by the USB reader and assembles the UID from keystrokes terminated by Enter.  On **Linux / Mac** the `evdev` library reads raw key events from the device specified by `RFID_DEVICE`.
 
 ---
 
@@ -292,7 +297,7 @@ To manage multiple rooms from a single server, run one Flask instance per door (
 | `FLASK_ENV` | — | `development` enables debug mode; default `production` |
 | `FLASK_PORT` | — | Port Flask listens on; default `5000` |
 | `RFID_DEVICE` | — | evdev device path for USB RFID reader on Linux/Mac; default `/dev/input/event2` |
-| `DOOR_ROOM` | — | Room number associated with the door RFID reader on this machine; default `unknown` |
+| `DOOR_ROOM` | — | Room number associated with the door RFID reader on this machine; default `301` |
 
 ---
 
