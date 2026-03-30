@@ -1,0 +1,8 @@
+flask
+flask-cors
+supabase
+python-dotenv
+# keyboard is used on Windows for USB HID RFID input; not needed on Linux/Mac
+keyboard
+# evdev is used on Linux/Mac for USB RFID input; not needed on Windows
+# evdev
