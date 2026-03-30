@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUPPI — Housekeeping Dashboard</title>
+
+  <!-- Supabase JS client (loaded from CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0A0F2C;
+      --surface:      #121836;
+      --surface-2:    #1a2248;
+      --border:       #243060;
+      --text:         #e8eaf6;
+      --text-muted:   #8892b0;
+
+      --pending:      #607d8b;
+      --active:       #ffa000;
+      --complete:     #2e7d32;
+      --incomplete:   #c62828;
+
+      --pending-bg:   rgba(96,125,139,.15);
+      --active-bg:    rgba(255,160,0,.15);
+      --complete-bg:  rgba(46,125,50,.15);
+      --incomplete-bg:rgba(198,40,40,.15);
+
+      --tick:         #66bb6a;
+      --cross:        #ef5350;
+      --bar-track:    #243060;
+
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --radius: 12px;
+      --gap: 1.25rem;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
+    header .logo span { color: var(--active); }
+    header .subtitle { color: var(--text-muted); font-size: .9rem; }
+    header .live-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      color: var(--tick);
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    header .live-badge .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--tick);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .3; }
+    }
+
+    /* ── Stats bar ────────────────────────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1rem 2rem;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat-chip {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .85rem;
+    }
+    .stat-chip .count { font-weight: 700; font-size: 1.1rem; }
+    .stat-chip.pending  .count { color: var(--pending); }
+    .stat-chip.active   .count { color: var(--active); }
+    .stat-chip.complete .count { color: var(--tick); }
+    .stat-chip.incomplete .count { color: var(--cross); }
+
+    /* ── Main grid ────────────────────────────────────────────────────────── */
+    main {
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--gap);
+    }
+    @media (max-width: 900px) {
+      main { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 560px) {
+      main { grid-template-columns: 1fr; padding: 1rem; }
+    }
+
+    /* ── Room tile ────────────────────────────────────────────────────────── */
+    .room-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .room-tile:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+
+    /* status-specific left border accent */
+    .room-tile[data-status="pending"]    { border-left: 4px solid var(--pending); }
+    .room-tile[data-status="active"]     { border-left: 4px solid var(--active); background: var(--active-bg); }
+    .room-tile[data-status="complete"]   { border-left: 4px solid var(--complete); background: var(--complete-bg); }
+    .room-tile[data-status="incomplete"] { border-left: 4px solid var(--incomplete); background: var(--incomplete-bg); }
+
+    /* tile header row */
+    .tile-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .room-number {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    /* status badge */
+    .status-badge {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .25rem .65rem;
+      border-radius: 999px;
+    }
+    .status-badge.pending    { background: var(--pending-bg);    color: var(--pending); }
+    .status-badge.active     { background: var(--active-bg);     color: var(--active); }
+    .status-badge.complete   { background: var(--complete-bg);   color: var(--tick); }
+    .status-badge.incomplete { background: var(--incomplete-bg); color: var(--cross); }
+
+    /* progress bar */
+    .progress-wrap { display: flex; flex-direction: column; gap: .3rem; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .78rem;
+      color: var(--text-muted);
+    }
+    .progress-track {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--bar-track);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    [data-status="pending"]    .progress-fill { background: var(--pending); }
+    [data-status="active"]     .progress-fill { background: var(--active); }
+    [data-status="complete"]   .progress-fill { background: var(--tick); }
+    [data-status="incomplete"] .progress-fill { background: var(--cross); }
+
+    /* zone lists */
+    .zones-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .2rem .5rem;
+      font-size: .8rem;
+    }
+    .zone-item {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .zone-item.done  { color: var(--tick); }
+    .zone-item.miss  { color: var(--text-muted); }
+    .zone-icon { font-size: .9rem; flex-shrink: 0; }
+
+    /* start time */
+    .start-time {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-top: .1rem;
+    }
+
+    /* ── Empty state ──────────────────────────────────────────────────────── */
+    #empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    #empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    #empty-state p { font-size: 1rem; }
+
+    /* ── Toast notification ───────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .65rem 1rem;
+      font-size: .83rem;
+      color: var(--text);
+      opacity: 0;
+      transform: translateX(20px);
+      animation: toast-in .3s forwards, toast-out .3s 3.7s forwards;
+      max-width: 300px;
+    }
+    @keyframes toast-in  { to { opacity: 1; transform: translateX(0); } }
+    @keyframes toast-out { to { opacity: 0; transform: translateX(20px); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">KU<span>PPI</span></div>
+  <div class="subtitle">Housekeeping Quality Assurance</div>
+  <div class="live-badge">
+    <div class="dot"></div>
+    LIVE
+  </div>
+</header>
+
+<div class="stats-bar" id="stats-bar">
+  <div class="stat-chip pending">
+    <span class="count" id="cnt-pending">—</span> Pending
+  </div>
+  <div class="stat-chip active">
+    <span class="count" id="cnt-active">—</span> Active
+  </div>
+  <div class="stat-chip complete">
+    <span class="count" id="cnt-complete">—</span> Complete
+  </div>
+  <div class="stat-chip incomplete">
+    <span class="count" id="cnt-incomplete">—</span> Incomplete
+  </div>
+</div>
+
+<main id="grid">
+  <div id="empty-state">
+    <div class="icon">🏨</div>
+    <p>Loading room data…</p>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script>
+  // ── Configuration injected by Flask ───────────────────────────────────────
+  const SUPABASE_URL = {{ supabase_url | tojson }};
+  const SUPABASE_KEY = {{ supabase_key | tojson }};
+
+  const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
+  const TOTAL  = ZONES.length;
+
+  // ── Supabase client ────────────────────────────────────────────────────────
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let roomState = {};   // room_number -> { status, zones_done, scanned, missing, start_time }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function fmt(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function statusLabel(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function showToast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 4200);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function updateStats() {
+    const counts = { pending: 0, active: 0, complete: 0, incomplete: 0 };
+    Object.values(roomState).forEach(r => {
+      const k = r.status || 'pending';
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    document.getElementById('cnt-pending').textContent   = counts.pending;
+    document.getElementById('cnt-active').textContent    = counts.active;
+    document.getElementById('cnt-complete').textContent  = counts.complete;
+    document.getElementById('cnt-incomplete').textContent = counts.incomplete;
+  }
+
+  function renderTile(room) {
+    const data   = roomState[room];
+    const pct    = Math.round((data.zones_done / TOTAL) * 100);
+    const status = data.status || 'pending';
+
+    const scannedSet = new Set(data.scanned || []);
+
+    const zonesHtml = ZONES.map(z => {
+      const done = scannedSet.has(z);
+      return `<div class="zone-item ${done ? 'done' : 'miss'}">
+        <span class="zone-icon">${done ? '✅' : '❌'}</span>
+        <span>${z}</span>
+      </div>`;
+    }).join('');
+
+    const startHtml = data.start_time
+      ? `<div class="start-time">Started ${fmt(data.start_time)}</div>`
+      : '';
+
+    return `
+      <div class="room-tile" id="tile-${room}" data-status="${status}">
+        <div class="tile-header">
+          <div class="room-number">Room ${room}</div>
+          <div class="status-badge ${status}">${statusLabel(status)}</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>Zones cleaned</span>
+            <span>${data.zones_done} / ${TOTAL}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${pct}%"></div>
+          </div>
+        </div>
+        <div class="zones-grid">${zonesHtml}</div>
+        ${startHtml}
+      </div>`;
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('grid');
+    const rooms = Object.keys(roomState).sort((a, b) =>
+      // Natural (numeric-aware) sort so '10' comes after '9', not after '1'
+      a.localeCompare(b, undefined, { numeric: true }));
+
+    if (rooms.length === 0) {
+      grid.innerHTML = `<div id="empty-state">
+        <div class="icon">🏨</div>
+        <p>No rooms found. Add rooms to the <code>rooms</code> table in Supabase.</p>
+      </div>`;
+      return;
+    }
+
+    // Preserve existing tiles and do granular updates when possible
+    rooms.forEach(room => {
+      const existing = document.getElementById(`tile-${room}`);
+      const html = renderTile(room);
+      if (existing) {
+        existing.outerHTML = html;
+      } else {
+        grid.insertAdjacentHTML('beforeend', html);
+      }
+    });
+
+    // Remove tiles for rooms that no longer exist
+    grid.querySelectorAll('.room-tile').forEach(el => {
+      const r = el.id.replace('tile-', '');
+      if (!roomState[r]) el.remove();
+    });
+  }
+
+  // ── Fetch full status from REST API ────────────────────────────────────────
+  async function loadStatus() {
+    try {
+      const res = await fetch('/api/status');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      data.forEach(room => {
+        roomState[room.room] = room;
+      });
+
+      renderGrid();
+      updateStats();
+    } catch (err) {
+      console.error('Failed to load room status:', err);
+    }
+  }
+
+  // ── Supabase real-time subscription ────────────────────────────────────────
+  function subscribeRealtime() {
+    // Listen for new scans — refresh the affected room tile immediately
+    db.channel('kuppi-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'scans' },
+        async (payload) => {
+          console.log('Scan event:', payload);
+          // Re-fetch full status to get updated zone lists
+          await loadStatus();
+          showToast('📡 New scan received');
+        })
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions' },
+        async (payload) => {
+          console.log('Session event:', payload);
+          const row = payload.new || {};
+          const verb = payload.eventType === 'INSERT' ? 'opened' :
+                       (row.status === 'complete' ? 'completed ✓' :
+                        row.status === 'incomplete' ? 'incomplete ✗' : 'updated');
+          await loadStatus();
+          if (row.room) showToast(`Room ${row.room} session ${verb}`);
+        })
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Real-time channel connected');
+        }
+      });
+  }
+
+  // ── Initialise ─────────────────────────────────────────────────────────────
+  (async () => {
+    await loadStatus();
+    subscribeRealtime();
+
+    // Fallback poll every 30 s in case the real-time WebSocket is unavailable
+    // (e.g. network restrictions, Supabase plan limits, or initial load race).
+    setInterval(loadStatus, 30_000);
+  })();
+</script>
+
+</body>
+</html>
