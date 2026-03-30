@@ -31,6 +31,7 @@ A supervisor monitors live cleaning progress through this web dashboard.
 | Real-time | Supabase Realtime (Postgres changes) |
 | Frontend | HTML · CSS · Vanilla JavaScript |
 | Door reader | `keyboard` library (Windows) · `evdev` (Linux/Mac) |
+| Card firmware | ESP32 · Arduino · TFT_eSPI · Adafruit PN532 · ArduinoJson |
 
 ---
 
@@ -43,8 +44,10 @@ kuppi_dashboard/
 ├── .env.example            # Environment variable template
 ├── templates/
 │   └── dashboard.html      # Supervisor dashboard (single-page)
-└── supabase/
-    └── schema.sql          # Database schema & real-time setup
+├── supabase/
+│   └── schema.sql          # Database schema & real-time setup
+└── kuppi_v14_fixed/
+    └── kuppi_v14_fixed.ino # ESP32 Arduino firmware for the KUPPI card device
 ```
 
 ---
@@ -210,6 +213,60 @@ Returns JSON array of all rooms with current status.
 1. **KUPPI card** sends HTTP POST requests to `http://<server-ip>:<port>/scan` whenever an NFC tag is scanned.
 2. Configure the KUPPI firmware with the server IP address and port.
 3. The card must send JSON with fields: `card_uid`, `tag_uid`, `area`, `room`.
+
+---
+
+## KUPPI Card Firmware
+
+The `kuppi_v14_fixed/kuppi_v14_fixed.ino` sketch runs on an **ESP32** with a TFT display, a PN532 NFC reader (I2C), and a buzzer.  It provides a touchscreen checklist UI, reads NFC tags in the six room zones, and sends HTTP requests to the Flask backend.
+
+### Hardware Required
+
+- ESP32 development board
+- TFT display (configured via `TFT_eSPI` `User_Setup.h`)
+- PN532 NFC module (I2C, address `0x48`)
+- CST816 capacitive touch controller (I2C, address `0x38`)
+- Passive buzzer on GPIO 25
+
+### Arduino Libraries
+
+Install the following libraries via the Arduino Library Manager or PlatformIO:
+
+| Library | Purpose |
+|---------|---------|
+| `TFT_eSPI` | TFT display driver |
+| `Adafruit PN532` | NFC reader |
+| `ArduinoJson` | JSON serialisation |
+| `WiFi` | Built-in ESP32 Wi-Fi |
+| `HTTPClient` | Built-in ESP32 HTTP client |
+
+### Firmware Configuration
+
+Open `kuppi_v14_fixed/kuppi_v14_fixed.ino` and edit the constants near the top of the file:
+
+```cpp
+const char* WIFI_SSID     = "YourNetwork";
+const char* WIFI_PASSWORD = "YourPassword";
+const char* SERVER_IP     = "192.168.1.100";   // IP of the machine running app.py
+const int   SERVER_PORT   = 5000;
+const char* CARD_UID      = "KUPPI-001";        // Unique ID for this card
+const char* ROOM_NUMBER   = "101";              // Room this card is assigned to
+```
+
+Also update `zoneUIDs` with the actual UID bytes read from your NFC tags for the six zones.
+
+### Flashing
+
+1. Open the sketch in the **Arduino IDE** (2.x recommended) or PlatformIO.
+2. Select **ESP32 Dev Module** (or your specific board) as the target.
+3. Configure `TFT_eSPI` for your display by editing its `User_Setup.h`.
+4. Click **Upload**.
+
+### Runtime Behaviour
+
+- On boot the device connects to Wi-Fi and calls `POST /session/open`.
+- Staff tap each NFC zone tag; the device calls `POST /scan` and checks off the zone on the touchscreen.
+- A 25-minute countdown timer is displayed.  When all six zones are complete the device calls `POST /session/close` and shows a completion screen.
 
 ---
 
