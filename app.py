@@ -91,9 +91,13 @@ def receive_scan():
         {
             "card_uid": "KUPPI-001",
             "tag_uid":  "BC590C4E",
-            "area":     "Bed",
+            "area":     "Bed",          # or "DOOR" for door tags
             "room":     "301"
         }
+
+    If area is "DOOR", this is a door NFC tag scan.
+    If tag_uid is not found in rooms.nfc_uid (for DOOR) or zone_tags.tag_uid (for zones),
+    it logs as an unknown scan.
     """
     data = request.get_json(force=True)
     if not data:
@@ -108,11 +112,61 @@ def receive_scan():
     if not all([card_uid, tag_uid, area, room]):
         return jsonify({"error": "Missing required fields: card_uid, tag_uid, area, room"}), 400
 
-    # FIX 1: Validate area against known zones
+    # Handle DOOR area scan
+    if area == "DOOR":
+        # Check if this door NFC tag is configured in rooms table
+        room_resp = (
+            supabase.table("rooms")
+            .select("id, room_number, nfc_uid")
+            .eq("nfc_uid", tag_uid)
+            .execute()
+        )
+
+        if not room_resp.data:
+            # Unknown door tag - log it
+            _log("SCAN_UNKNOWN_DOOR", f"Unknown door tag_uid={tag_uid} card={card_uid}")
+            supabase.table("unknown_scans").insert({
+                "tag_uid": tag_uid,
+                "scanned_at": _now_iso()
+            }).execute()
+            return jsonify({
+                "error": "Unknown door NFC tag. Please configure this tag in the rooms table.",
+                "tag_uid": tag_uid
+            }), 400
+
+        # Door tag recognized - delegate to existing door tap handler
+        _handle_door_tap(card_uid, room_resp.data[0]["room_number"])
+        return jsonify({
+            "status": "ok",
+            "action": "door_tap_processed",
+            "room": room_resp.data[0]["room_number"]
+        }), 200
+
+    # Validate area against known zones for non-DOOR scans
     if area not in ZONES:
         _log("SCAN_INVALID", f"Unknown area={area} from card={card_uid}")
         return jsonify({
-            "error": f"Unknown area '{area}'. Valid zones: {ZONES}"
+            "error": f"Unknown area '{area}'. Valid zones: {ZONES} or 'DOOR'"
+        }), 400
+
+    # Check if zone tag is configured
+    zone_tag_resp = (
+        supabase.table("zone_tags")
+        .select("id, room_number, area_name")
+        .eq("tag_uid", tag_uid)
+        .execute()
+    )
+
+    if not zone_tag_resp.data:
+        # Unknown zone tag - log it
+        _log("SCAN_UNKNOWN_ZONE", f"Unknown zone tag_uid={tag_uid} card={card_uid} area={area}")
+        supabase.table("unknown_scans").insert({
+            "tag_uid": tag_uid,
+            "scanned_at": _now_iso()
+        }).execute()
+        return jsonify({
+            "error": "Unknown zone NFC tag. Please configure this tag in the zone_tags table.",
+            "tag_uid": tag_uid
         }), 400
 
     # Find the active session for this card/room combination
@@ -127,14 +181,14 @@ def receive_scan():
         .execute()
     )
 
-    # FIX 2: Return 400 if no active session found instead of inserting null
+    # Return 400 if no active session found
     if not session_resp.data:
         _log("SCAN_NO_SESSION", f"No active session for card={card_uid} room={room}")
         return jsonify({"error": "No active session found. Tap door reader to start."}), 400
 
     session_id = session_resp.data[0]["id"]
 
-    # FIX 3: Prevent duplicate scans for same area in same session
+    # Prevent duplicate scans for same area in same session
     existing_scan = (
         supabase.table("scans")
         .select("id")
@@ -372,6 +426,250 @@ def api_status():
     return jsonify(result), 200
 
 
+# ---------------------------------------------------------------------------
+# Room Management API endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/rooms", methods=["GET"])
+def get_rooms():
+    """
+    List all rooms with their status and metadata.
+
+    Response:
+        [
+            {
+                "id": "uuid",
+                "room_number": "301",
+                "status": "available",
+                "reason": null,
+                "nfc_uid": "DOOR-301",
+                "floor": "3",
+                "room_type": "Suite",
+                "created_at": "2025-01-01T10:00:00+00:00",
+                "updated_at": "2025-01-01T10:00:00+00:00"
+            }
+        ]
+    """
+    try:
+        resp = supabase.table("rooms").select("*").order("room_number").execute()
+        _log("API_ROOMS_LIST", f"{len(resp.data or [])} rooms returned")
+        return jsonify(resp.data or []), 200
+    except Exception as e:
+        _log("API_ROOMS_ERROR", f"Failed to list rooms: {e}")
+        return jsonify({"error": "Failed to retrieve rooms"}), 500
+
+
+@app.route("/api/rooms", methods=["POST"])
+def create_room():
+    """
+    Create a new room.
+
+    Expected JSON body:
+        {
+            "room_number": "301",
+            "status": "available",        # optional, defaults to 'available'
+            "reason": "Under renovation",  # optional
+            "nfc_uid": "DOOR-301",         # optional, door NFC tag UID
+            "floor": "3",                  # optional
+            "room_type": "Suite"           # optional
+        }
+    """
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    room_number = data.get("room_number", "").strip()
+    if not room_number:
+        return jsonify({"error": "Missing required field: room_number"}), 400
+
+    # Validate status if provided
+    status = data.get("status", "available").strip()
+    valid_statuses = ["available", "blocked", "maintenance", "inactive"]
+    if status not in valid_statuses:
+        return jsonify({
+            "error": f"Invalid status. Must be one of: {valid_statuses}"
+        }), 400
+
+    room_row = {
+        "room_number": room_number,
+        "status": status,
+        "reason": data.get("reason", "").strip() or None,
+        "nfc_uid": data.get("nfc_uid", "").strip() or None,
+        "floor": data.get("floor", "").strip() or None,
+        "room_type": data.get("room_type", "").strip() or None,
+    }
+
+    try:
+        resp = supabase.table("rooms").insert(room_row).execute()
+        room = resp.data[0] if resp.data else {}
+        _log("API_ROOMS_CREATE", f"Created room {room_number}")
+        return jsonify(room), 201
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+            return jsonify({"error": f"Room {room_number} already exists"}), 409
+        _log("API_ROOMS_ERROR", f"Failed to create room: {e}")
+        return jsonify({"error": "Failed to create room"}), 500
+
+
+@app.route("/api/rooms/<room_id>", methods=["PUT"])
+def update_room(room_id):
+    """
+    Update an existing room.
+
+    Expected JSON body (all fields optional):
+        {
+            "room_number": "301",
+            "status": "maintenance",
+            "reason": "AC repair",
+            "nfc_uid": "DOOR-301-NEW",
+            "floor": "3",
+            "room_type": "Deluxe"
+        }
+    """
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    # Validate status if provided
+    if "status" in data:
+        status = data["status"].strip()
+        valid_statuses = ["available", "blocked", "maintenance", "inactive"]
+        if status not in valid_statuses:
+            return jsonify({
+                "error": f"Invalid status. Must be one of: {valid_statuses}"
+            }), 400
+
+    # Build update object (only include fields that are present in request)
+    update_fields = {}
+    for field in ["room_number", "status", "reason", "nfc_uid", "floor", "room_type"]:
+        if field in data:
+            value = data[field]
+            if isinstance(value, str):
+                value = value.strip()
+            update_fields[field] = value if value else None
+
+    if not update_fields:
+        return jsonify({"error": "No fields to update"}), 400
+
+    try:
+        resp = supabase.table("rooms").update(update_fields).eq("id", room_id).execute()
+        if not resp.data:
+            return jsonify({"error": "Room not found"}), 404
+        room = resp.data[0]
+        _log("API_ROOMS_UPDATE", f"Updated room {room.get('room_number', room_id)}")
+        return jsonify(room), 200
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+            return jsonify({"error": "Room number or NFC UID already exists"}), 409
+        _log("API_ROOMS_ERROR", f"Failed to update room: {e}")
+        return jsonify({"error": "Failed to update room"}), 500
+
+
+@app.route("/api/rooms/<room_id>", methods=["DELETE"])
+def delete_room(room_id):
+    """
+    Delete a room.
+
+    Response:
+        { "status": "ok", "message": "Room deleted" }
+    """
+    try:
+        resp = supabase.table("rooms").delete().eq("id", room_id).execute()
+        if not resp.data:
+            return jsonify({"error": "Room not found"}), 404
+        _log("API_ROOMS_DELETE", f"Deleted room {room_id}")
+        return jsonify({"status": "ok", "message": "Room deleted"}), 200
+    except Exception as e:
+        _log("API_ROOMS_ERROR", f"Failed to delete room: {e}")
+        return jsonify({"error": "Failed to delete room"}), 500
+
+
+# ---------------------------------------------------------------------------
+# Unknown Scans API endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/unknown_scans", methods=["GET"])
+def get_unknown_scans():
+    """
+    List all unknown scans, optionally filtered by resolved status.
+
+    Query parameters:
+        ?resolved=true   - show only resolved scans
+        ?resolved=false  - show only unresolved scans (default)
+
+    Response:
+        [
+            {
+                "id": "uuid",
+                "tag_uid": "BC590C4E",
+                "scanned_at": "2025-01-01T10:00:00+00:00",
+                "resolved": false,
+                "resolved_at": null,
+                "assigned_room": null
+            }
+        ]
+    """
+    resolved_filter = request.args.get("resolved", "false").lower()
+
+    try:
+        query = supabase.table("unknown_scans").select("*").order("scanned_at", desc=True)
+
+        if resolved_filter == "true":
+            query = query.eq("resolved", True)
+        elif resolved_filter == "false":
+            query = query.eq("resolved", False)
+        # If neither true nor false, return all scans
+
+        resp = query.execute()
+        _log("API_UNKNOWN_SCANS_LIST", f"{len(resp.data or [])} unknown scans returned")
+        return jsonify(resp.data or []), 200
+    except Exception as e:
+        _log("API_UNKNOWN_SCANS_ERROR", f"Failed to list unknown scans: {e}")
+        return jsonify({"error": "Failed to retrieve unknown scans"}), 500
+
+
+@app.route("/api/unknown_scans/<scan_id>/resolve", methods=["POST"])
+def resolve_unknown_scan(scan_id):
+    """
+    Mark an unknown scan as resolved, optionally assigning it to a room.
+
+    Expected JSON body:
+        {
+            "assigned_room": "301"  # optional
+        }
+
+    Response:
+        {
+            "id": "uuid",
+            "tag_uid": "BC590C4E",
+            "resolved": true,
+            "resolved_at": "2025-01-01T11:00:00+00:00",
+            "assigned_room": "301"
+        }
+    """
+    data = request.get_json(force=True) or {}
+    assigned_room = data.get("assigned_room", "").strip() or None
+
+    update_fields = {
+        "resolved": True,
+        "resolved_at": _now_iso(),
+        "assigned_room": assigned_room
+    }
+
+    try:
+        resp = supabase.table("unknown_scans").update(update_fields).eq("id", scan_id).execute()
+        if not resp.data:
+            return jsonify({"error": "Unknown scan not found"}), 404
+        scan = resp.data[0]
+        _log("API_UNKNOWN_SCANS_RESOLVE", f"Resolved scan {scan_id} -> room {assigned_room or 'none'}")
+        return jsonify(scan), 200
+    except Exception as e:
+        _log("API_UNKNOWN_SCANS_ERROR", f"Failed to resolve scan: {e}")
+        return jsonify({"error": "Failed to resolve unknown scan"}), 500
+
+
 @app.route("/dashboard")
 @app.route("/")
 def dashboard():
@@ -463,13 +761,17 @@ def _rfid_listener_evdev() -> None:
         _log("RFID_ERROR", traceback.format_exc())
 
 
-def _handle_door_tap(card_uid: str) -> None:
+def _handle_door_tap(card_uid: str, room: str = None) -> None:
     """
-    FIX 4: Toggle session open/close on each card tap.
+    Toggle session open/close on each card tap.
     First tap opens a session, second tap closes it.
-    DOOR_ROOM defaults to "301" instead of "unknown".
+
+    Args:
+        card_uid: The KUPPI card UID
+        room: The room number (if None, uses DOOR_ROOM env var, defaults to "301")
     """
-    room = os.environ.get("DOOR_ROOM", "301")
+    if room is None:
+        room = os.environ.get("DOOR_ROOM", "301")
     _log("DOOR_TAP", f"card={card_uid} room={room}")
 
     try:
