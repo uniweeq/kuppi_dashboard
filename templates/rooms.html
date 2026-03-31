@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUPPI — Room Management</title>
+
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0A0F2C;
+      --surface:      #121836;
+      --surface-2:    #1a2248;
+      --border:       #243060;
+      --text:         #e8eaf6;
+      --text-muted:   #8892b0;
+
+      --primary:      #ffa000;
+      --primary-hover:#ffb300;
+      --success:      #2e7d32;
+      --danger:       #c62828;
+      --danger-hover: #d32f2f;
+      --warning:      #f57c00;
+
+      --available:    #66bb6a;
+      --blocked:      #ef5350;
+      --maintenance:  #ffa726;
+      --inactive:     #78909c;
+
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --radius: 12px;
+      --gap: 1.25rem;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
+    header .logo span { color: var(--primary); }
+    header .subtitle { color: var(--text-muted); font-size: .9rem; }
+    header nav {
+      margin-left: auto;
+      display: flex;
+      gap: 1rem;
+    }
+    header nav a {
+      color: var(--text);
+      text-decoration: none;
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      transition: background .2s;
+    }
+    header nav a:hover {
+      background: var(--surface-2);
+    }
+    header nav a.active {
+      background: var(--primary);
+      color: var(--bg);
+      font-weight: 600;
+    }
+
+    /* ── Container ────────────────────────────────────────────────────────── */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ── Page header ──────────────────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+    }
+    .page-header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    .page-header .actions {
+      display: flex;
+      gap: .75rem;
+    }
+
+    /* ── Buttons ──────────────────────────────────────────────────────────── */
+    .btn {
+      padding: .65rem 1.25rem;
+      border: none;
+      border-radius: 6px;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      font-family: var(--font);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    .btn-danger:hover {
+      background: var(--danger-hover);
+      transform: translateY(-1px);
+    }
+    .btn-small {
+      padding: .4rem .8rem;
+      font-size: .8rem;
+    }
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    /* ── Table ────────────────────────────────────────────────────────────── */
+    .table-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead {
+      background: var(--surface-2);
+    }
+    th {
+      text-align: left;
+      padding: 1rem;
+      font-weight: 600;
+      font-size: .85rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+    }
+    td {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    tbody tr {
+      transition: background .15s;
+    }
+    tbody tr:hover {
+      background: var(--surface-2);
+    }
+
+    /* ── Status badges ────────────────────────────────────────────────────── */
+    .status-badge {
+      display: inline-block;
+      padding: .3rem .75rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .status-badge.available { background: rgba(102,187,106,.2); color: var(--available); }
+    .status-badge.blocked { background: rgba(239,83,80,.2); color: var(--blocked); }
+    .status-badge.maintenance { background: rgba(255,167,38,.2); color: var(--maintenance); }
+    .status-badge.inactive { background: rgba(120,144,156,.2); color: var(--inactive); }
+
+    /* ── Modal ────────────────────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background .2s;
+    }
+    .modal-close:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+    .modal-body {
+      padding: 1.5rem;
+    }
+    .modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: .75rem;
+      justify-content: flex-end;
+    }
+
+    /* ── Form ─────────────────────────────────────────────────────────────── */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: .5rem;
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    .form-group small {
+      display: block;
+      margin-top: .25rem;
+      color: var(--text-muted);
+      font-size: .8rem;
+    }
+    .form-control {
+      width: 100%;
+      padding: .75rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .95rem;
+      font-family: var(--font);
+      transition: border-color .2s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    select.form-control {
+      cursor: pointer;
+    }
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* ── Toast ────────────────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      z-index: 9999;
+    }
+    .toast {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .75rem 1.25rem;
+      font-size: .9rem;
+      color: var(--text);
+      box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      opacity: 0;
+      transform: translateX(20px);
+      animation: toast-in .3s forwards, toast-out .3s 2.7s forwards;
+      max-width: 350px;
+    }
+    .toast.success { border-left: 4px solid var(--success); }
+    .toast.error { border-left: 4px solid var(--danger); }
+    @keyframes toast-in  { to { opacity: 1; transform: translateX(0); } }
+    @keyframes toast-out { to { opacity: 0; transform: translateX(20px); } }
+
+    /* ── Empty state ──────────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state p { font-size: 1rem; margin-bottom: 1.5rem; }
+
+    /* ── Loading ──────────────────────────────────────────────────────────── */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Action buttons ───────────────────────────────────────────────────── */
+    .action-btns {
+      display: flex;
+      gap: .5rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">KU<span>PPI</span></div>
+  <div class="subtitle">Room Management</div>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/rooms" class="active">Rooms</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-header">
+    <h1>Room Management</h1>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Add Room</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table id="rooms-table">
+      <thead>
+        <tr>
+          <th>Room Number</th>
+          <th>Floor</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Reason</th>
+          <th>NFC UID</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="rooms-tbody">
+        <tr>
+          <td colspan="7" class="loading">Loading rooms...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="room-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Room</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="room-form">
+        <input type="hidden" id="room-id" />
+
+        <div class="form-group">
+          <label for="room-number">Room Number *</label>
+          <input type="text" id="room-number" class="form-control" required placeholder="e.g., 301" />
+        </div>
+
+        <div class="form-group">
+          <label for="floor">Floor</label>
+          <input type="text" id="floor" class="form-control" placeholder="e.g., 3" />
+        </div>
+
+        <div class="form-group">
+          <label for="room-type">Room Type</label>
+          <input type="text" id="room-type" class="form-control" placeholder="e.g., Suite, Deluxe, Standard" />
+        </div>
+
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" class="form-control">
+            <option value="available">Available</option>
+            <option value="blocked">Blocked</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="reason">Reason</label>
+          <textarea id="reason" class="form-control" placeholder="Optional: reason for status"></textarea>
+          <small>Only required if status is blocked, maintenance, or inactive</small>
+        </div>
+
+        <div class="form-group">
+          <label for="nfc-uid">Door NFC UID</label>
+          <input type="text" id="nfc-uid" class="form-control" placeholder="e.g., DOOR-301" />
+          <small>The NFC tag UID for the door reader</small>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRoom()">Save Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Confirm Delete</h2>
+      <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete room <strong id="delete-room-number"></strong>?</p>
+      <p style="color: var(--text-muted); margin-top: 1rem;">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete Room</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let rooms = [];
+  let editingRoomId = null;
+  let deletingRoomId = null;
+
+  // ── Toast notifications ────────────────────────────────────────────────────
+  function showToast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  // ── Load rooms ─────────────────────────────────────────────────────────────
+  async function loadRooms() {
+    try {
+      const res = await fetch('/api/rooms');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      rooms = await res.json();
+      renderTable();
+    } catch (err) {
+      console.error('Failed to load rooms:', err);
+      showToast('Failed to load rooms', 'error');
+      document.getElementById('rooms-tbody').innerHTML =
+        '<tr><td colspan="7" class="empty-state">Failed to load rooms</td></tr>';
+    }
+  }
+
+  // ── Render table ───────────────────────────────────────────────────────────
+  function renderTable() {
+    const tbody = document.getElementById('rooms-tbody');
+
+    if (rooms.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <div class="icon">🏨</div>
+              <p>No rooms found</p>
+              <button class="btn btn-primary" onclick="openCreateModal()">Add Your First Room</button>
+            </div>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rooms.map(room => `
+      <tr>
+        <td><strong>${escapeHtml(room.room_number)}</strong></td>
+        <td>${escapeHtml(room.floor || '—')}</td>
+        <td>${escapeHtml(room.room_type || '—')}</td>
+        <td><span class="status-badge ${room.status}">${room.status}</span></td>
+        <td>${escapeHtml(room.reason || '—')}</td>
+        <td><code>${escapeHtml(room.nfc_uid || '—')}</code></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-small btn-secondary" onclick="openEditModal('${room.id}')">Edit</button>
+            <button class="btn btn-small btn-danger" onclick="openDeleteModal('${room.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── Modal management ───────────────────────────────────────────────────────
+  function openCreateModal() {
+    editingRoomId = null;
+    document.getElementById('modal-title').textContent = 'Add Room';
+    document.getElementById('room-form').reset();
+    document.getElementById('room-id').value = '';
+    document.getElementById('room-modal').classList.add('active');
+  }
+
+  function openEditModal(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    editingRoomId = roomId;
+    document.getElementById('modal-title').textContent = 'Edit Room';
+    document.getElementById('room-id').value = room.id;
+    document.getElementById('room-number').value = room.room_number;
+    document.getElementById('floor').value = room.floor || '';
+    document.getElementById('room-type').value = room.room_type || '';
+    document.getElementById('status').value = room.status;
+    document.getElementById('reason').value = room.reason || '';
+    document.getElementById('nfc-uid').value = room.nfc_uid || '';
+    document.getElementById('room-modal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('room-modal').classList.remove('active');
+    editingRoomId = null;
+  }
+
+  function openDeleteModal(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    deletingRoomId = roomId;
+    document.getElementById('delete-room-number').textContent = room.room_number;
+    document.getElementById('delete-modal').classList.add('active');
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('delete-modal').classList.remove('active');
+    deletingRoomId = null;
+  }
+
+  // ── Save room ──────────────────────────────────────────────────────────────
+  async function saveRoom() {
+    const roomNumber = document.getElementById('room-number').value.trim();
+    if (!roomNumber) {
+      showToast('Room number is required', 'error');
+      return;
+    }
+
+    const data = {
+      room_number: roomNumber,
+      floor: document.getElementById('floor').value.trim() || null,
+      room_type: document.getElementById('room-type').value.trim() || null,
+      status: document.getElementById('status').value,
+      reason: document.getElementById('reason').value.trim() || null,
+      nfc_uid: document.getElementById('nfc-uid').value.trim() || null,
+    };
+
+    try {
+      let res;
+      if (editingRoomId) {
+        // Update existing room
+        res = await fetch(`/api/rooms/${editingRoomId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      } else {
+        // Create new room
+        res = await fetch('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+      }
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to save room');
+      }
+
+      showToast(editingRoomId ? 'Room updated successfully' : 'Room created successfully');
+      closeModal();
+      await loadRooms();
+    } catch (err) {
+      console.error('Failed to save room:', err);
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ── Delete room ────────────────────────────────────────────────────────────
+  async function confirmDelete() {
+    if (!deletingRoomId) return;
+
+    try {
+      const res = await fetch(`/api/rooms/${deletingRoomId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete room');
+      }
+
+      showToast('Room deleted successfully');
+      closeDeleteModal();
+      await loadRooms();
+    } catch (err) {
+      console.error('Failed to delete room:', err);
+      showToast(err.message, 'error');
+    }
+  }
+
+  // ── Utility ────────────────────────────────────────────────────────────────
+  function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // ── Initialize ─────────────────────────────────────────────────────────────
+  loadRooms();
+</script>
+
+</body>
+</html>
