@@ -228,7 +228,8 @@ def open_session():
     Expected JSON body:
         {
             "card_uid": "KUPPI-001",
-            "room":     "301"
+            "room":     "301",
+            "staff_id": "1001"  # optional
         }
     """
     data = request.get_json(force=True)
@@ -237,6 +238,7 @@ def open_session():
 
     card_uid = data.get("card_uid", "").strip()
     room     = data.get("room",     "").strip()
+    staff_id = data.get("staff_id", "").strip() or None
 
     if not all([card_uid, room]):
         return jsonify({"error": "Missing required fields: card_uid, room"}), 400
@@ -252,10 +254,11 @@ def open_session():
         "room":       room,
         "start_time": _now_iso(),
         "status":     "active",
+        "staff_id":   staff_id,
     }
     resp = supabase.table("sessions").insert(session_row).execute()
     session = resp.data[0] if resp.data else {}
-    _log("SESSION_OPEN", f"room={room} card={card_uid} session_id={session.get('id')}")
+    _log("SESSION_OPEN", f"room={room} card={card_uid} staff_id={staff_id} session_id={session.get('id')}")
 
     return jsonify({"status": "ok", "session": session}), 201
 
@@ -264,7 +267,7 @@ def open_session():
 def close_session():
     """
     Close a cleaning session. Marks complete if all 6 zones scanned,
-    incomplete otherwise.
+    incomplete otherwise. Calculates duration_mins from start_time to end_time.
 
     Expected JSON body:
         {
@@ -284,7 +287,7 @@ def close_session():
 
     session_resp = (
         supabase.table("sessions")
-        .select("id")
+        .select("id, start_time")
         .eq("card_uid", card_uid)
         .eq("room", room)
         .eq("status", "active")
@@ -297,6 +300,7 @@ def close_session():
         return jsonify({"error": "No active session found"}), 404
 
     session_id = session_resp.data[0]["id"]
+    start_time_str = session_resp.data[0]["start_time"]
 
     scans_resp = (
         supabase.table("scans")
@@ -308,19 +312,26 @@ def close_session():
     scanned_areas = {s["area"] for s in (scans_resp.data or [])}
     status = "complete" if scanned_areas.issuperset(set(ZONES)) else "incomplete"
 
+    # Calculate duration in minutes
+    end_time = datetime.now(timezone.utc)
+    start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+    duration_mins = int((end_time - start_time).total_seconds() / 60)
+
     supabase.table("sessions").update({
-        "status":   status,
-        "end_time": _now_iso(),
+        "status":       status,
+        "end_time":     end_time.isoformat(),
+        "duration_mins": duration_mins,
     }).eq("id", session_id).execute()
 
     missing = sorted(set(ZONES) - scanned_areas)
-    _log("SESSION_CLOSE", f"room={room} card={card_uid} status={status} missing={missing}")
+    _log("SESSION_CLOSE", f"room={room} card={card_uid} status={status} duration={duration_mins}min missing={missing}")
 
     return jsonify({
-        "status":  "ok",
-        "result":  status,
-        "missing": missing,
-        "scanned": sorted(scanned_areas),
+        "status":       "ok",
+        "result":       status,
+        "duration_mins": duration_mins,
+        "missing":      missing,
+        "scanned":      sorted(scanned_areas),
     }), 200
 
 
@@ -670,6 +681,43 @@ def resolve_unknown_scan(scan_id):
         return jsonify({"error": "Failed to resolve unknown scan"}), 500
 
 
+# ---------------------------------------------------------------------------
+# Staff API endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/staff/<staff_id>", methods=["GET"])
+def get_staff(staff_id):
+    """
+    Lookup staff member by staff_id.
+
+    Response:
+        {
+            "staff_id": "1001",
+            "name": "John Smith",
+            "role": "Housekeeping",
+            "start_date": "2024-01-15",
+            "status": "active"
+        }
+
+    Error response:
+        {
+            "error": "Staff ID not found"
+        }
+    """
+    try:
+        resp = supabase.table("staff").select("*").eq("staff_id", staff_id).execute()
+        if not resp.data:
+            _log("API_STAFF_NOT_FOUND", f"staff_id={staff_id}")
+            return jsonify({"error": "Staff ID not found"}), 404
+
+        staff = resp.data[0]
+        _log("API_STAFF_LOOKUP", f"staff_id={staff_id} name={staff.get('name')}")
+        return jsonify(staff), 200
+    except Exception as e:
+        _log("API_STAFF_ERROR", f"Failed to lookup staff: {e}")
+        return jsonify({"error": "Failed to lookup staff"}), 500
+
+
 @app.route("/dashboard")
 @app.route("/")
 def dashboard():
@@ -784,7 +832,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
         # Check if an active session already exists for this card
         existing = (
             supabase.table("sessions")
-            .select("id")
+            .select("id, start_time")
             .eq("card_uid", card_uid)
             .eq("room", room)
             .eq("status", "active")
@@ -794,6 +842,8 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
         if existing.data:
             # Second tap — close the session
             session_id = existing.data[0]["id"]
+            start_time_str = existing.data[0]["start_time"]
+
             scans_resp = (
                 supabase.table("scans")
                 .select("area")
@@ -804,13 +854,19 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             status = "complete" if scanned.issuperset(set(ZONES)) else "incomplete"
             missing = sorted(set(ZONES) - scanned)
 
+            # Calculate duration in minutes
+            end_time = datetime.now(timezone.utc)
+            start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+            duration_mins = int((end_time - start_time).total_seconds() / 60)
+
             supabase.table("sessions").update({
-                "status":   status,
-                "end_time": _now_iso(),
+                "status":       status,
+                "end_time":     end_time.isoformat(),
+                "duration_mins": duration_mins,
             }).eq("id", session_id).execute()
 
             _log("SESSION_CLOSE",
-                 f"room={room} card={card_uid} status={status} missing={missing}")
+                 f"room={room} card={card_uid} status={status} duration={duration_mins}min missing={missing}")
 
         else:
             # First tap — open a new session
