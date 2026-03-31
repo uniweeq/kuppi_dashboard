@@ -37,11 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_scans_session_id ON scans (session_id);
 CREATE INDEX IF NOT EXISTS idx_scans_timestamp  ON scans (timestamp DESC);
 
 -- ---------------------------------------------------------------------------
--- 3. rooms
---    Master list of rooms.  Each room has 6 NFC tag definitions (one per
+-- 3. zone_tags (formerly rooms)
+--    Master list of zone NFC tags.  Each room has 6 NFC tag definitions (one per
 --    zone).  The tag_uid is the UID programmed into the physical NFC sticker.
 -- ---------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS rooms (
+CREATE TABLE IF NOT EXISTS zone_tags (
     id           UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
     room_number  TEXT  NOT NULL,
     tag_uid      TEXT  NOT NULL UNIQUE,
@@ -52,10 +52,47 @@ CREATE TABLE IF NOT EXISTS rooms (
                        ))
 );
 
-CREATE INDEX IF NOT EXISTS idx_rooms_room_number ON rooms (room_number);
+CREATE INDEX IF NOT EXISTS idx_zone_tags_room_number ON zone_tags (room_number);
 
 -- ---------------------------------------------------------------------------
--- 4. room_status view
+-- 4. rooms (Room Management Table)
+--    One row per room with status, door NFC tag, and metadata.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rooms (
+    id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_number  TEXT        NOT NULL UNIQUE,
+    status       TEXT        NOT NULL DEFAULT 'available'
+                             CHECK (status IN ('available', 'blocked', 'maintenance', 'inactive')),
+    reason       TEXT,
+    nfc_uid      TEXT,
+    floor        TEXT,
+    room_type    TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rooms_room_number ON rooms (room_number);
+CREATE INDEX IF NOT EXISTS idx_rooms_status ON rooms (status);
+CREATE INDEX IF NOT EXISTS idx_rooms_nfc_uid ON rooms (nfc_uid);
+
+-- ---------------------------------------------------------------------------
+-- 5. unknown_scans
+--    Logs scans of unconfigured/unknown NFC tags for resolution.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS unknown_scans (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    tag_uid        TEXT        NOT NULL,
+    scanned_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved       BOOLEAN     NOT NULL DEFAULT false,
+    resolved_at    TIMESTAMPTZ,
+    assigned_room  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_unknown_scans_resolved ON unknown_scans (resolved);
+CREATE INDEX IF NOT EXISTS idx_unknown_scans_tag_uid ON unknown_scans (tag_uid);
+
+-- ---------------------------------------------------------------------------
+-- 6. room_status view
 --    Convenience view joining sessions and scans to produce a per-room
 --    summary of the most recent session.
 -- ---------------------------------------------------------------------------
@@ -90,7 +127,7 @@ FROM    latest_sessions ls
 LEFT JOIN session_scans ss ON ss.session_id = ls.session_id;
 
 -- ---------------------------------------------------------------------------
--- 5. Enable Supabase real-time on the relevant tables
+-- 7. Enable Supabase real-time on the relevant tables
 --    (Supabase uses publication-based replication.  Add tables here so that
 --    the JS client receives change events.)
 -- ---------------------------------------------------------------------------
@@ -107,11 +144,27 @@ END $$;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE scans;
+ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
+ALTER PUBLICATION supabase_realtime ADD TABLE unknown_scans;
 
 -- ---------------------------------------------------------------------------
--- 6. Sample seed data (optional — remove in production)
+-- 8. Trigger to auto-update updated_at timestamp on rooms table
 -- ---------------------------------------------------------------------------
--- INSERT INTO rooms (room_number, tag_uid, area_name) VALUES
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_rooms_updated_at BEFORE UPDATE ON rooms
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ---------------------------------------------------------------------------
+-- 9. Sample seed data (optional — remove in production)
+-- ---------------------------------------------------------------------------
+-- INSERT INTO zone_tags (room_number, tag_uid, area_name) VALUES
 --   ('101', 'TAG-101-TOI', 'Toilet'),
 --   ('101', 'TAG-101-WAR', 'Wardrobe'),
 --   ('101', 'TAG-101-STU', 'Study Desk'),
@@ -124,3 +177,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE scans;
 --   ('102', 'TAG-102-BED', 'Bed'),
 --   ('102', 'TAG-102-CUR', 'Curtain'),
 --   ('102', 'TAG-102-DRK', 'Drinks Bar');
+
+-- INSERT INTO rooms (room_number, status, nfc_uid, floor, room_type) VALUES
+--   ('101', 'available', 'DOOR-101', '1', 'Standard'),
+--   ('102', 'available', 'DOOR-102', '1', 'Standard'),
+--   ('201', 'available', 'DOOR-201', '2', 'Deluxe'),
+--   ('301', 'available', 'DOOR-301', '3', 'Suite');

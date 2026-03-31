@@ -103,14 +103,24 @@ DOOR_ROOM=301                   # Room number for this door unit
 This creates:
 - `sessions` table — one row per cleaning session
 - `scans` table — one row per NFC tag scan
-- `rooms` table — master list of rooms and their NFC tags
+- `zone_tags` table — master list of NFC tags for room zones (6 tags per room)
+- `rooms` table — one row per room with status, door NFC tag, and metadata
+- `unknown_scans` table — logs for unconfigured/unknown NFC tags
 - `room_status` view — per-room summary joining sessions and scans
-- Real-time publication enabled on `sessions` and `scans`
+- Real-time publication enabled on `sessions`, `scans`, `rooms`, and `unknown_scans`
 
 After creating the schema, add your rooms to the `rooms` table:
 
 ```sql
-INSERT INTO rooms (room_number, tag_uid, area_name) VALUES
+-- Add rooms with their door NFC tags and metadata
+INSERT INTO rooms (room_number, status, nfc_uid, floor, room_type) VALUES
+  ('101', 'available', 'DOOR-101', '1', 'Standard'),
+  ('102', 'available', 'DOOR-102', '1', 'Standard'),
+  ('201', 'available', 'DOOR-201', '2', 'Deluxe'),
+  ('301', 'available', 'DOOR-301', '3', 'Suite');
+
+-- Add zone NFC tags for each room
+INSERT INTO zone_tags (room_number, tag_uid, area_name) VALUES
   ('101', 'TAG-101-TOI', 'Toilet'),
   ('101', 'TAG-101-WAR', 'Wardrobe'),
   ('101', 'TAG-101-STU', 'Study Desk'),
@@ -154,7 +164,9 @@ The dashboard shows a live grid of all rooms with their current cleaning status,
 
 ## API Reference
 
-### `POST /scan`
+### Session & Scan Endpoints
+
+#### `POST /scan`
 Receives a scan event from a KUPPI card.
 
 **Body (JSON):**
@@ -162,18 +174,20 @@ Receives a scan event from a KUPPI card.
 {
   "card_uid": "KUPPI-001",
   "tag_uid":  "BC590C4E",
-  "area":     "Bed",
+  "area":     "Bed",       // or "DOOR" for door NFC tags
   "room":     "301"
 }
 ```
 
 **Notes:**
-- `area` must be one of the six known zone names (`Toilet`, `Wardrobe`, `Study Desk`, `Bed`, `Curtain`, `Drinks Bar`); otherwise returns **400**.
+- `area` must be either "DOOR" or one of the six known zone names (`Toilet`, `Wardrobe`, `Study Desk`, `Bed`, `Curtain`, `Drinks Bar`); otherwise returns **400**.
+- If `area` is "DOOR", checks if `tag_uid` matches a configured door tag in the `rooms` table. If not found, logs to `unknown_scans` and returns **400**.
+- For zone scans, checks if `tag_uid` is configured in `zone_tags` table. If not found, logs to `unknown_scans` and returns **400**.
 - Returns **400** if no active session exists for the card/room combination.
 - Returns **200** with `"status": "already_scanned"` if the zone was already recorded in the current session (idempotent).
 - Returns **201** with the inserted scan object on success.
 
-### `POST /session/open`
+#### `POST /session/open`
 Opens a new cleaning session (called automatically by the door RFID listener on the first card tap, or manually).  Any previously active session for the same room is automatically closed as `incomplete` before the new session is created.
 
 **Body (JSON):**
@@ -184,7 +198,7 @@ Opens a new cleaning session (called automatically by the door RFID listener on 
 }
 ```
 
-### `POST /session/close`
+#### `POST /session/close`
 Closes a session.  Marks it `complete` if all 6 zones were scanned, otherwise `incomplete`.
 
 **Body (JSON):**
@@ -195,8 +209,8 @@ Closes a session.  Marks it `complete` if all 6 zones were scanned, otherwise `i
 }
 ```
 
-### `GET /api/status`
-Returns JSON array of all rooms with current status.
+#### `GET /api/status`
+Returns JSON array of all rooms with current cleaning status.
 
 **Response:**
 ```json
@@ -212,6 +226,107 @@ Returns JSON array of all rooms with current status.
   }
 ]
 ```
+
+### Room Management Endpoints
+
+#### `GET /api/rooms`
+List all rooms with their status and metadata.
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "room_number": "301",
+    "status": "available",
+    "reason": null,
+    "nfc_uid": "DOOR-301",
+    "floor": "3",
+    "room_type": "Suite",
+    "created_at": "2025-01-01T10:00:00+00:00",
+    "updated_at": "2025-01-01T10:00:00+00:00"
+  }
+]
+```
+
+#### `POST /api/rooms`
+Create a new room.
+
+**Body (JSON):**
+```json
+{
+  "room_number": "301",
+  "status": "available",        // optional: available | blocked | maintenance | inactive
+  "reason": "Under renovation",  // optional
+  "nfc_uid": "DOOR-301",         // optional, door NFC tag UID
+  "floor": "3",                  // optional
+  "room_type": "Suite"           // optional
+}
+```
+
+**Response:** Returns the created room object with **201**.
+
+#### `PUT /api/rooms/<room_id>`
+Update an existing room (all fields optional).
+
+**Body (JSON):**
+```json
+{
+  "status": "maintenance",
+  "reason": "AC repair",
+  "nfc_uid": "DOOR-301-NEW",
+  "floor": "3",
+  "room_type": "Deluxe"
+}
+```
+
+**Response:** Returns the updated room object with **200**.
+
+#### `DELETE /api/rooms/<room_id>`
+Delete a room.
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "message": "Room deleted"
+}
+```
+
+### Unknown Scans Endpoints
+
+#### `GET /api/unknown_scans`
+List all unknown NFC tag scans (unconfigured tags).
+
+**Query Parameters:**
+- `resolved=true` — show only resolved scans
+- `resolved=false` — show only unresolved scans (default)
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "tag_uid": "BC590C4E",
+    "scanned_at": "2025-01-01T10:00:00+00:00",
+    "resolved": false,
+    "resolved_at": null,
+    "assigned_room": null
+  }
+]
+```
+
+#### `POST /api/unknown_scans/<scan_id>/resolve`
+Mark an unknown scan as resolved, optionally assigning it to a room.
+
+**Body (JSON):**
+```json
+{
+  "assigned_room": "301"  // optional
+}
+```
+
+**Response:** Returns the updated scan object with **200**.
 
 ---
 
