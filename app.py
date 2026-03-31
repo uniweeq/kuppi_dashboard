@@ -729,12 +729,6 @@ def dashboard():
     )
 
 
-@app.route("/rooms")
-def rooms():
-    """Serve the room management page."""
-    return render_template("rooms.html")
-
-
 # ---------------------------------------------------------------------------
 # USB RFID door-reader background thread
 # ---------------------------------------------------------------------------
