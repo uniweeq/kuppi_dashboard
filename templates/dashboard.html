@@ -58,6 +58,27 @@
     header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
     header .logo span { color: var(--active); }
     header .subtitle { color: var(--text-muted); font-size: .9rem; }
+    header nav {
+      display: flex;
+      gap: 1rem;
+      margin-left: 2rem;
+    }
+    header nav a {
+      color: var(--text);
+      text-decoration: none;
+      padding: .5rem 1rem;
+      border-radius: 6px;
+      transition: background .2s;
+      font-size: .9rem;
+    }
+    header nav a:hover {
+      background: rgba(255,160,0,.1);
+    }
+    header nav a.active {
+      background: var(--active);
+      color: var(--bg);
+      font-weight: 600;
+    }
     header .live-badge {
       margin-left: auto;
       display: flex;
@@ -250,6 +271,10 @@
 <header>
   <div class="logo">KU<span>PPI</span></div>
   <div class="subtitle">Housekeeping Quality Assurance</div>
+  <nav>
+    <a href="/dashboard" class="active">Dashboard</a>
+    <a href="/rooms">Rooms</a>
+  </nav>
   <div class="live-badge">
     <div class="dot"></div>
     LIVE
