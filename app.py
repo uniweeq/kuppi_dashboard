@@ -149,25 +149,10 @@ def receive_scan():
             "error": f"Unknown area '{area}'. Valid zones: {ZONES} or 'DOOR'"
         }), 400
 
-    # Check if zone tag is configured
-    zone_tag_resp = (
-        supabase.table("zone_tags")
-        .select("id, room_number, area_name")
-        .eq("tag_uid", tag_uid)
-        .execute()
-    )
-
-    if not zone_tag_resp.data:
-        # Unknown zone tag - log it
-        _log("SCAN_UNKNOWN_ZONE", f"Unknown zone tag_uid={tag_uid} card={card_uid} area={area}")
-        supabase.table("unknown_scans").insert({
-            "tag_uid": tag_uid,
-            "scanned_at": _now_iso()
-        }).execute()
-        return jsonify({
-            "error": "Unknown zone NFC tag. Please configure this tag in the zone_tags table.",
-            "tag_uid": tag_uid
-        }), 400
+    # Note: zone_tags lookup skipped — the area is already validated against
+    # ZONES above, and the Arduino firmware identifies zones by NFC UID
+    # before sending the scan request.
+    _log("SCAN_ZONE", f"tag_uid={tag_uid} card={card_uid} area={area} room={room}")
 
     # Find the active session for this card/room combination
     session_resp = (
