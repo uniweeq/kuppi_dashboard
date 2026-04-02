@@ -14,12 +14,14 @@ Fixes applied:
 """
 
 import os
+import json
+import queue
 import threading
 import platform
 import traceback
 from datetime import datetime, timezone
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 from flask_cors import CORS
 from supabase import create_client, Client
 from dotenv import load_dotenv, find_dotenv
@@ -76,6 +78,56 @@ def _log(event: str, detail: str = "") -> None:
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# ---------------------------------------------------------------------------
+# Server-Sent Events (SSE) for live dashboard updates
+# ---------------------------------------------------------------------------
+
+sse_clients: list[queue.Queue] = []
+sse_lock = threading.Lock()
+
+
+def notify_clients(event_type: str, data: dict | str = "") -> None:
+    """Push an event to all connected SSE browser clients."""
+    payload = json.dumps({"type": event_type, "data": data})
+    dead = []
+    with sse_lock:
+        for q in sse_clients:
+            try:
+                q.put_nowait(payload)
+            except queue.Full:
+                dead.append(q)
+        for q in dead:
+            sse_clients.remove(q)
+
+
+@app.route("/events")
+def sse_stream():
+    """SSE endpoint — browsers connect here for live push updates."""
+    def stream():
+        q = queue.Queue(maxsize=50)
+        with sse_lock:
+            sse_clients.append(q)
+        try:
+            while True:
+                try:
+                    payload = q.get(timeout=25)
+                    yield f"data: {payload}\n\n"
+                except queue.Empty:
+                    yield ": keepalive\n\n"
+        except GeneratorExit:
+            pass
+        finally:
+            with sse_lock:
+                if q in sse_clients:
+                    sse_clients.remove(q)
+
+    return Response(
+        stream(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +188,7 @@ def receive_scan():
 
         # Door tag recognized - delegate to existing door tap handler
         _handle_door_tap(card_uid, room_resp.data[0]["room_number"])
+        notify_clients("door_tap", {"room": room_resp.data[0]["room_number"]})
         return jsonify({
             "status": "ok",
             "action": "door_tap_processed",
@@ -198,6 +251,7 @@ def receive_scan():
     }
     scan_resp = supabase.table("scans").insert(scan_row).execute()
     _log("SCAN", f"room={room} area={area} card={card_uid} session={session_id}")
+    notify_clients("scan", {"room": room, "area": area})
 
     return jsonify({
         "status": "ok",
@@ -243,6 +297,7 @@ def open_session():
     resp = supabase.table("sessions").insert(session_row).execute()
     session = resp.data[0] if resp.data else {}
     _log("SESSION_OPEN", f"room={room} card={card_uid} staff_id={staff_id} session_id={session.get('id')}")
+    notify_clients("session_open", {"room": room})
 
     return jsonify({"status": "ok", "session": session}), 201
 
@@ -309,6 +364,7 @@ def close_session():
 
     missing = sorted(set(ZONES) - scanned_areas)
     _log("SESSION_CLOSE", f"room={room} card={card_uid} status={status} duration={duration_mins}min missing={missing}")
+    notify_clients("session_close", {"room": room, "status": status})
 
     return jsonify({
         "status":       "ok",
@@ -1059,6 +1115,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
 
             _log("SESSION_CLOSE",
                  f"room={room} card={card_uid} status={status} duration={duration_mins}min missing={missing}")
+            notify_clients("session_close", {"room": room, "status": status})
 
         else:
             # First tap — open a new session
@@ -1078,6 +1135,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             session = resp.data[0] if resp.data else {}
             _log("SESSION_OPEN",
                  f"room={room} card={card_uid} session_id={session.get('id')}")
+            notify_clients("session_open", {"room": room})
 
     except Exception:
         _log("SESSION_ERROR", traceback.format_exc())

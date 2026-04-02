@@ -78,16 +78,10 @@ uint8_t zoneItemCount[NUM_ZONES] = {10, 5, 6, 6, 8, 6};
 bool zoneCompleted[NUM_ZONES]          = {false};
 bool itemChecked[NUM_ZONES][MAX_ITEMS] = {false};
 
-enum Screen { SCREEN_STAFF_ID, SCREEN_WELCOME, SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
-Screen currentScreen = SCREEN_STAFF_ID;
+enum Screen { SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
+Screen currentScreen = SCREEN_HOME;
 int activeZone   = -1;
 int scrollOffset = 0;
-
-// ── STAFF ID TRACKING ────────────────────────────────────────
-char activeStaffId[8]     = "";
-char fetchedStaffName[64] = "";
-bool staffLookupSuccess   = false;
-unsigned long welcomeScreenStart = 0;
 
 // ── WI-FI STATUS ────────────────────────────────────────────
 enum WifiStatus { WIFI_OFFLINE, WIFI_SENDING, WIFI_OK, WIFI_FAIL };
@@ -99,7 +93,7 @@ unsigned long wifiStatusTime = 0;
 volatile int  pendingScanZone     = -1;
 volatile bool pendingSessionOpen  = false;
 volatile bool pendingSessionClose = false;
-volatile bool pendingStaffLookup  = false;
+
 
 // ── TIMER ───────────────────────────────────────────────────
 #define TIMER_DURATION_MS  (25UL * 60UL * 1000UL)
@@ -241,7 +235,6 @@ void sendSessionOpen() {
   StaticJsonDocument<256> doc;
   doc["card_uid"] = CARD_UID;
   doc["room"]     = ROOM_NUMBER;
-  doc["staff_id"] = activeStaffId;
   String payload;
   serializeJson(doc, payload);
   Serial.println("[HTTP] POST /session/open");
@@ -271,50 +264,9 @@ void sendSessionClose() {
   http.end();
 }
 
-void sendStaffLookup() {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[HTTP] Offline — staff lookup failed");
-    staffLookupSuccess = false;
-    return;
-  }
-  String url = String("http://") + SERVER_IP + ":" + SERVER_PORT + "/api/staff/" + activeStaffId;
-  Serial.print("[HTTP] GET /api/staff/"); Serial.println(activeStaffId);
-  HTTPClient http;
-  http.begin(url);
-  http.setTimeout(3000);
-  int code = http.GET();
-  Serial.print("[HTTP] Staff lookup: "); Serial.println(code);
-
-  if (code == 200) {
-    String response = http.getString();
-    StaticJsonDocument<512> doc;
-    DeserializationError err = deserializeJson(doc, response);
-    if (!err) {
-      const char* name = doc["name"];
-      if (name) {
-        strncpy(fetchedStaffName, name, sizeof(fetchedStaffName) - 1);
-        fetchedStaffName[sizeof(fetchedStaffName) - 1] = '\0';
-        staffLookupSuccess = true;
-        Serial.print("[HTTP] Staff found: "); Serial.println(fetchedStaffName);
-      } else {
-        staffLookupSuccess = false;
-      }
-    } else {
-      staffLookupSuccess = false;
-    }
-  } else {
-    staffLookupSuccess = false;
-  }
-  http.end();
-}
-
 // ── BACKGROUND HTTP TASK (Core 0) ────────────────────────────
 void httpTask(void* parameter) {
   for(;;) {
-    if(pendingStaffLookup) {
-      pendingStaffLookup = false;
-      sendStaffLookup();
-    }
     // Session open MUST be processed before scans, otherwise
     // the server rejects the scan with "No active session"
     if(pendingSessionOpen) {
@@ -487,102 +439,7 @@ void drawScrollbar(int count, int offset) {
   tft.fillRoundRect(sbX, thumbY, SCROLL_W, thumbH, 3, COL_SCROLLTHUMB);
 }
 
-// ── STAFF ID SCREEN ──────────────────────────────────────────
-void drawStaffIDScreen() {
-  tft.fillScreen(COL_BG);
-  drawHeader("Staff ID", "KUPPI", "", false);
 
-  // Display box showing current input
-  int boxX = 90, boxY = 60, boxW = 300, boxH = 40;
-  tft.fillRoundRect(boxX, boxY, boxW, boxH, 5, COL_HEADER);
-  tft.setTextColor(COL_WHITE);
-  tft.setTextSize(3);
-  int textX = boxX + (boxW - strlen(activeStaffId) * 18) / 2;
-  tft.setCursor(textX, boxY + 10);
-  tft.print(activeStaffId);
-
-  // Draw numeric keypad (3x4 grid like phone)
-  const char* keys[12] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "<", "0", "OK"};
-  int keyW = 80, keyH = 50, keyGap = 10;
-  int startX = (480 - 3 * keyW - 2 * keyGap) / 2;
-  int startY = 120;
-
-  for(int i = 0; i < 12; i++) {
-    int col = i % 3;
-    int row = i / 3;
-    int kx = startX + col * (keyW + keyGap);
-    int ky = startY + row * (keyH + keyGap);
-
-    uint16_t bgColor = COL_PILL_OFF;
-    uint16_t textColor = COL_WHITE;
-
-    // Special colors for backspace and OK
-    if(i == 9) {  // Backspace
-      bgColor = COL_RED_DARK;
-    } else if(i == 11) {  // OK button
-      bgColor = COL_GREEN_DARK;
-    }
-
-    tft.fillRoundRect(kx, ky, keyW, keyH, 8, bgColor);
-    tft.setTextColor(textColor);
-    tft.setTextSize(3);
-
-    int tw = strlen(keys[i]) * 18;
-    int tx = kx + (keyW - tw) / 2;
-    int ty = ky + (keyH - 24) / 2;
-    tft.setCursor(tx, ty);
-    tft.print(keys[i]);
-  }
-
-  drawTimerBorder();
-}
-
-// ── WELCOME SCREEN ───────────────────────────────────────────
-void drawWelcomeScreen() {
-  tft.fillScreen(COL_BG);
-  drawHeader("Welcome", "KUPPI", "", false);
-  drawTimerBorder();
-
-  int cx = 240, cy = 140;
-
-  if(staffLookupSuccess) {
-    // Show success - welcome message with staff name
-    tft.setTextColor(COL_WHITE);
-    tft.setTextSize(3);
-    int w1 = strlen("Welcome,") * 18;
-    tft.setCursor((480 - w1) / 2, cy - 40);
-    tft.print("Welcome,");
-
-    tft.setTextColor(COL_GREEN);
-    tft.setTextSize(3);
-    int w2 = strlen(fetchedStaffName) * 18;
-    tft.setCursor((480 - w2) / 2, cy);
-    tft.print(fetchedStaffName);
-
-    tft.setTextColor(COL_FADED);
-    tft.setTextSize(2);
-    int w3 = strlen("Have a great shift!") * 12;
-    tft.setCursor((480 - w3) / 2, cy + 50);
-    tft.print("Have a great shift!");
-  } else {
-    // Show error - ID not found
-    tft.setTextColor(COL_RED);
-    tft.setTextSize(3);
-    int w1 = strlen("Staff ID") * 18;
-    tft.setCursor((480 - w1) / 2, cy - 20);
-    tft.print("Staff ID");
-
-    int w2 = strlen("not found") * 18;
-    tft.setCursor((480 - w2) / 2, cy + 20);
-    tft.print("not found");
-
-    tft.setTextColor(COL_FADED);
-    tft.setTextSize(2);
-    int w3 = strlen("Please try again") * 12;
-    tft.setCursor((480 - w3) / 2, cy + 70);
-    tft.print("Please try again");
-  }
-}
 
 // ── HOME SCREEN ─────────────────────────────────────────────
 void drawHomeScreen() {
@@ -709,64 +566,13 @@ void resetAll() {
     zoneCompleted[i]=false;
     for(int j=0;j<MAX_ITEMS;j++) itemChecked[i][j]=false;
   }
-  currentScreen   = SCREEN_STAFF_ID;
+  currentScreen   = SCREEN_HOME;
   activeZone      = -1;
   scrollOffset    = 0;
-  activeStaffId[0] = '\0';  // Clear staff ID for next user
-  fetchedStaffName[0] = '\0';
-  staffLookupSuccess = false;
   timerRunning    = false;
 }
 
 // ── TOUCH HANDLING ───────────────────────────────────────────
-void handleStaffIDTouch(int tx, int ty) {
-  const char* keys[12] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "<", "0", "OK"};
-  int keyW = 80, keyH = 50, keyGap = 10;
-  int startX = (480 - 3 * keyW - 2 * keyGap) / 2;
-  int startY = 120;
-
-  for(int i = 0; i < 12; i++) {
-    int col = i % 3;
-    int row = i / 3;
-    int kx = startX + col * (keyW + keyGap);
-    int ky = startY + row * (keyH + keyGap);
-
-    if(tx >= kx && tx <= kx + keyW && ty >= ky && ty <= ky + keyH) {
-      buzzOnce();
-
-      if(i == 9) {
-        // Backspace
-        int len = strlen(activeStaffId);
-        if(len > 0) {
-          activeStaffId[len - 1] = '\0';
-        }
-        Serial.println("[TOUCH] Backspace");
-        drawStaffIDScreen();
-      } else if(i == 11) {
-        // OK - confirm
-        if(strlen(activeStaffId) > 0) {
-          Serial.print("[TOUCH] Staff ID entered: ");
-          Serial.println(activeStaffId);
-          pendingStaffLookup = true;
-          currentScreen = SCREEN_WELCOME;
-          welcomeScreenStart = millis();
-          drawWelcomeScreen();
-        }
-      } else {
-        // Number key
-        int len = strlen(activeStaffId);
-        if(len < 6) {
-          activeStaffId[len] = keys[i][0];
-          activeStaffId[len + 1] = '\0';
-          Serial.print("[TOUCH] Key: "); Serial.println(keys[i]);
-          drawStaffIDScreen();
-        }
-      }
-      delay(250);
-      return;
-    }
-  }
-}
 
 void handleChecklistTouch(int tx, int ty) {
   if(activeZone < 0) return;
@@ -896,8 +702,9 @@ void setup() {
   Serial.println("[HTTP] Background task started on Core 0");
 
   delay(800);
-  drawStaffIDScreen();
-  Serial.println("[KUPPI] Ready - waiting for staff ID");
+  currentScreen = SCREEN_HOME;
+  drawHomeScreen();
+  Serial.println("[KUPPI] Ready - scan a zone to begin");
 }
 
 // ── LOOP (Core 1) ────────────────────────────────────────────
@@ -907,21 +714,6 @@ unsigned long lastNFCTime    = 0;
 unsigned long lastBorderTime = 0;
 
 void loop() {
-  // Handle welcome screen timeout
-  if(currentScreen == SCREEN_WELCOME && millis() - welcomeScreenStart > 2000) {
-    if(staffLookupSuccess) {
-      // Success - go to home screen
-      currentScreen = SCREEN_HOME;
-      kuppiTimerStart = millis();
-      timerRunning = false;  // Don't start timer until session opens
-      drawHomeScreen();
-    } else {
-      // Failure - return to staff ID screen
-      activeStaffId[0] = '\0';  // Clear staff ID
-      currentScreen = SCREEN_STAFF_ID;
-      drawStaffIDScreen();
-    }
-  }
 
   // Touch — 200ms debounce
   if(millis() - lastTouchTime > 200){
@@ -929,9 +721,8 @@ void loop() {
     if(tp.pressed && !lastPressed){
       lastTouchTime = millis();
       lastPressed   = true;
-      if     (currentScreen == SCREEN_STAFF_ID)  handleStaffIDTouch(tp.x, tp.y);
-      else if(currentScreen == SCREEN_CHECKLIST) handleChecklistTouch(tp.x, tp.y);
-      else if(currentScreen == SCREEN_COMPLETE)  { resetAll(); drawStaffIDScreen(); }
+      if     (currentScreen == SCREEN_CHECKLIST) handleChecklistTouch(tp.x, tp.y);
+      else if(currentScreen == SCREEN_COMPLETE)  { resetAll(); drawHomeScreen(); }
       lastPressed   = false;
       lastTouchTime = millis();
     } else if(!tp.pressed){

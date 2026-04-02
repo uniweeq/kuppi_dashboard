@@ -974,26 +974,38 @@
       }
     }
 
-    function subscribeRealtime() {
-      db.channel('kuppi-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'scans' },
-          async () => { await loadStatus(); showToast('📡 New scan received'); })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' },
-          async (payload) => {
-            const row = payload.new || {};
-            const verb = payload.eventType === 'INSERT' ? 'opened' :
-              (row.status === 'complete' ? 'completed ✓' :
-                row.status === 'incomplete' ? 'incomplete ✗' : 'updated');
-            await loadStatus();
-            if (row.room) showToast(`Room ${row.room} session ${verb}`);
-          })
-        .subscribe(s => { if (s === 'SUBSCRIBED') console.log('Realtime connected'); });
+    function subscribeLive() {
+      const evtSource = new EventSource('/events');
+
+      evtSource.onmessage = async (e) => {
+        try {
+          const evt = JSON.parse(e.data);
+          await loadStatus();
+
+          if (evt.type === 'scan') {
+            showToast(`📡 ${evt.data.area} scanned in Room ${evt.data.room}`);
+          } else if (evt.type === 'session_open') {
+            showToast(`🚪 Room ${evt.data.room} session opened`);
+          } else if (evt.type === 'session_close') {
+            const icon = evt.data.status === 'complete' ? '✅' : '⚠️';
+            showToast(`${icon} Room ${evt.data.room} ${evt.data.status}`);
+          } else if (evt.type === 'door_tap') {
+            showToast(`🚪 Door tap — Room ${evt.data.room}`);
+          }
+        } catch (err) {
+          console.error('SSE parse error:', err);
+        }
+      };
+
+      evtSource.onerror = () => {
+        console.warn('SSE connection lost, will auto-reconnect…');
+      };
     }
 
     (async () => {
       await loadStatus();
-      subscribeRealtime();
-      setInterval(loadStatus, 30_000);
+      subscribeLive();
+      setInterval(loadStatus, 10_000);  // fallback poll every 10s
 
       // Close modal when clicking outside
       document.getElementById('modal-overlay').addEventListener('click', (e) => {
