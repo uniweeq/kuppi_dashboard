@@ -11,12 +11,6 @@
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
-  <!-- Chart.js for analytics -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
   <style>
     *,
     *::before,
@@ -60,7 +54,6 @@
     html,
     body {
       background: var(--bg);
-      background: var(--bg-gradient);
       color: var(--text);
       font-family: var(--font-body);
       min-height: 100vh;
@@ -527,7 +520,6 @@
       background: var(--border-light);
       border-radius: 999px;
       overflow: hidden;
-      position: relative;
     }
 
     .prog-fill {
@@ -1017,14 +1009,6 @@
     const SUPABASE_KEY = {{ supabase_key | tojson }};
 
     const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
-    const ZONE_ICONS = {
-      "Toilet": "fas fa-toilet",
-      "Wardrobe": "fas fa-tshirt",
-      "Study Desk": "fas fa-desk",
-      "Bed": "fas fa-bed",
-      "Curtain": "fas fa-window-maximize",
-      "Drinks Bar": "fas fa-wine-glass"
-    };
     const TOTAL = ZONES.length;
 
     const ZONE_ICONS = {
@@ -1056,10 +1040,10 @@
       return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
-    function showToast(msg, icon = 'fa-info-circle') {
+    function showToast(msg) {
       const el = document.createElement('div');
       el.className = 'toast';
-      el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+      el.textContent = msg;
       document.getElementById('toast-container').appendChild(el);
       setTimeout(() => el.remove(), 4200);
     }
@@ -1289,9 +1273,8 @@
           async (payload) => {
             const row = payload.new || {};
             const verb = payload.eventType === 'INSERT' ? 'opened' :
-              (row.status === 'complete' ? 'completed' :
-                row.status === 'incomplete' ? 'incomplete' : 'updated');
-            addActivity('session', `Room ${row.room} session ${verb}`, new Date().toISOString());
+              (row.status === 'complete' ? 'completed ✓' :
+                row.status === 'incomplete' ? 'incomplete ✗' : 'updated');
             await loadStatus();
             if (row.room) showToast(`Room ${row.room} session ${verb}`);
           })
@@ -1300,7 +1283,6 @@
 
     (async () => {
       await loadStatus();
-      setupFiltersAndSearch();
       subscribeRealtime();
       setInterval(loadStatus, 30_000);
 
