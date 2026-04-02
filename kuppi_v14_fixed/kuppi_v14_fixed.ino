@@ -18,7 +18,10 @@ const char* WIFI_PASSWORD = "manutd10";
 const char* SERVER_IP     = "172.20.10.9";
 const int   SERVER_PORT   = 5000;
 const char* CARD_UID      = "KUPPI-001";
-const char* ROOM_NUMBER   = "301";
+
+// ── DYNAMIC ROOM (set by NFC scan) ──────────────────────────
+char activeRoom[16]       = "";   // filled after scanning room NFC tag
+bool roomIdentified       = false;
 
 // ── DISPLAY & NFC OBJECTS ───────────────────────────────────
 TFT_eSPI tft = TFT_eSPI();
@@ -78,8 +81,8 @@ uint8_t zoneItemCount[NUM_ZONES] = {10, 5, 6, 6, 8, 6};
 bool zoneCompleted[NUM_ZONES]          = {false};
 bool itemChecked[NUM_ZONES][MAX_ITEMS] = {false};
 
-enum Screen { SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
-Screen currentScreen = SCREEN_HOME;
+enum Screen { SCREEN_SCAN_ROOM, SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
+Screen currentScreen = SCREEN_SCAN_ROOM;
 int activeZone   = -1;
 int scrollOffset = 0;
 
@@ -93,6 +96,12 @@ unsigned long wifiStatusTime = 0;
 volatile int  pendingScanZone     = -1;
 volatile bool pendingSessionOpen  = false;
 volatile bool pendingSessionClose = false;
+
+// Room lookup state
+volatile bool pendingRoomLookup   = false;
+char roomLookupUID[20]            = "";
+volatile bool roomLookupDone      = false;
+volatile bool roomLookupSuccess   = false;
 
 
 // ── TIMER ───────────────────────────────────────────────────
@@ -211,7 +220,7 @@ void sendScanEvent(int zoneIdx) {
   doc["card_uid"] = CARD_UID;
   doc["tag_uid"]  = tagUID;
   doc["area"]     = zoneNames[zoneIdx];
-  doc["room"]     = ROOM_NUMBER;
+  doc["room"]     = activeRoom;
   String payload;
   serializeJson(doc, payload);
   Serial.print("[HTTP] POST /scan — area=");
@@ -234,7 +243,7 @@ void sendSessionOpen() {
   if (WiFi.status() != WL_CONNECTED) { Serial.println("[HTTP] Offline — session open not sent"); return; }
   StaticJsonDocument<256> doc;
   doc["card_uid"] = CARD_UID;
-  doc["room"]     = ROOM_NUMBER;
+  doc["room"]     = activeRoom;
   String payload;
   serializeJson(doc, payload);
   Serial.println("[HTTP] POST /session/open");
@@ -251,7 +260,7 @@ void sendSessionClose() {
   if (WiFi.status() != WL_CONNECTED) { Serial.println("[HTTP] Offline — session close not sent"); return; }
   StaticJsonDocument<128> doc;
   doc["card_uid"] = CARD_UID;
-  doc["room"]     = ROOM_NUMBER;
+  doc["room"]     = activeRoom;
   String payload;
   serializeJson(doc, payload);
   Serial.println("[HTTP] POST /session/close");
@@ -264,9 +273,53 @@ void sendSessionClose() {
   http.end();
 }
 
+void sendRoomLookup() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[HTTP] Offline — room lookup failed");
+    roomLookupSuccess = false;
+    roomLookupDone = true;
+    return;
+  }
+  String url = String("http://") + SERVER_IP + ":" + SERVER_PORT + "/api/room-lookup/" + roomLookupUID;
+  Serial.print("[HTTP] GET /api/room-lookup/"); Serial.println(roomLookupUID);
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(3000);
+  int code = http.GET();
+  Serial.print("[HTTP] Room lookup: "); Serial.println(code);
+
+  if (code == 200) {
+    String response = http.getString();
+    StaticJsonDocument<512> doc;
+    DeserializationError err = deserializeJson(doc, response);
+    if (!err) {
+      const char* roomNum = doc["room_number"];
+      if (roomNum) {
+        strncpy(activeRoom, roomNum, sizeof(activeRoom) - 1);
+        activeRoom[sizeof(activeRoom) - 1] = '\0';
+        roomIdentified = true;
+        roomLookupSuccess = true;
+        Serial.print("[HTTP] Room found: "); Serial.println(activeRoom);
+      } else {
+        roomLookupSuccess = false;
+      }
+    } else {
+      roomLookupSuccess = false;
+    }
+  } else {
+    roomLookupSuccess = false;
+  }
+  http.end();
+  roomLookupDone = true;
+}
+
 // ── BACKGROUND HTTP TASK (Core 0) ────────────────────────────
 void httpTask(void* parameter) {
   for(;;) {
+    if(pendingRoomLookup) {
+      pendingRoomLookup = false;
+      sendRoomLookup();
+    }
     // Session open MUST be processed before scans, otherwise
     // the server rejects the scan with "No active session"
     if(pendingSessionOpen) {
@@ -441,10 +494,109 @@ void drawScrollbar(int count, int offset) {
 
 
 
+// ── SCAN ROOM SCREEN ─────────────────────────────────────────
+void drawScanRoomScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+  drawTimerBorder();
+
+  int cx = 240, cy = 120;
+
+  // NFC icon (large circle)
+  tft.fillCircle(cx, cy, 52, COL_PILL_OFF);
+  tft.fillCircle(cx, cy, 46, COL_BG);
+  // NFC signal arcs
+  for(int r = 18; r <= 38; r += 10) {
+    tft.drawCircle(cx, cy, r, COL_FADED);
+  }
+  // Center dot
+  tft.fillCircle(cx, cy, 6, COL_FADED);
+
+  // Text
+  tft.setTextColor(COL_WHITE);
+  tft.setTextSize(3);
+  const char* line1 = "Scan Room Tag";
+  int w1 = strlen(line1) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 65);
+  tft.print(line1);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Hold device near door NFC";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 100);
+  tft.print(line2);
+}
+
+void drawRoomFoundScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+  drawTimerBorder();
+
+  int cx = 240, cy = 120;
+
+  // Green check circle
+  tft.fillCircle(cx, cy, 48, COL_GREEN);
+  tft.fillCircle(cx, cy, 42, COL_GREEN_DARK);
+  // Check mark
+  for(int t = -2; t <= 2; t++) {
+    tft.drawLine(cx - 20, cy + t, cx - 6, cy + 14 + t, COL_WHITE);
+    tft.drawLine(cx - 6, cy + 14 + t, cx + 22, cy - 16 + t, COL_WHITE);
+  }
+
+  // Room number
+  tft.setTextColor(COL_WHITE);
+  tft.setTextSize(3);
+  char roomLabel[32];
+  snprintf(roomLabel, sizeof(roomLabel), "Room %s", activeRoom);
+  int w1 = strlen(roomLabel) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 60);
+  tft.print(roomLabel);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Starting session...";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 95);
+  tft.print(line2);
+}
+
+void drawRoomNotFoundScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+  drawTimerBorder();
+
+  int cx = 240, cy = 130;
+
+  // Red X circle
+  tft.fillCircle(cx, cy, 48, COL_RED);
+  tft.fillCircle(cx, cy, 42, COL_RED_DARK);
+  for(int t = -2; t <= 2; t++) {
+    tft.drawLine(cx - 16, cy - 16 + t, cx + 16, cy + 16 + t, COL_WHITE);
+    tft.drawLine(cx + 16, cy - 16 + t, cx - 16, cy + 16 + t, COL_WHITE);
+  }
+
+  tft.setTextColor(COL_RED);
+  tft.setTextSize(3);
+  const char* line1 = "Room Not Found";
+  int w1 = strlen(line1) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 60);
+  tft.print(line1);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Try a different tag";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 95);
+  tft.print(line2);
+}
+
 // ── HOME SCREEN ─────────────────────────────────────────────
 void drawHomeScreen() {
   tft.fillScreen(COL_BG);
-  drawHeader("Room 301", "KUPPI", "", false);
+  char roomHeader[20];
+  snprintf(roomHeader, sizeof(roomHeader), "Room %s", activeRoom);
+  drawHeader(roomHeader, "KUPPI", "", false);
   drawTimerBorder();
   int r=52, startX=80, startY=100, gapX=160, gapY=128;
   for(int i=0;i<NUM_ZONES;i++){
@@ -500,7 +652,9 @@ void drawChecklistScreen(int zoneIdx) {
   bool allDone = (done == count);
   char prog[12];
   snprintf(prog, sizeof(prog), "%d/%d", done, count);
-  drawHeader("Room 301", "KUPPI", prog, allDone);
+  char roomHdr[20];
+  snprintf(roomHdr, sizeof(roomHdr), "Room %s", activeRoom);
+  drawHeader(roomHdr, "KUPPI", prog, allDone);
   drawTimerBorder();
   int rows = (count + 1) / 2;
   int visRows = min(PILLS_VISIBLE, rows - scrollOffset);
@@ -533,7 +687,9 @@ void drawChecklistScreen(int zoneIdx) {
 // ── COMPLETE SCREEN ──────────────────────────────────────────
 void drawCompleteScreen() {
   tft.fillScreen(COL_BG);
-  drawHeader("Room 301", "KUPPI", "", false);
+  char roomHdrC[20];
+  snprintf(roomHdrC, sizeof(roomHdrC), "Room %s", activeRoom);
+  drawHeader(roomHdrC, "KUPPI", "", false);
   int cx=240, cy=150;
   tft.fillCircle(cx,cy,72,COL_GREEN);
   tft.fillCircle(cx,cy,66,COL_GREEN_DARK);
@@ -566,10 +722,12 @@ void resetAll() {
     zoneCompleted[i]=false;
     for(int j=0;j<MAX_ITEMS;j++) itemChecked[i][j]=false;
   }
-  currentScreen   = SCREEN_HOME;
+  currentScreen   = SCREEN_SCAN_ROOM;
   activeZone      = -1;
   scrollOffset    = 0;
   timerRunning    = false;
+  roomIdentified  = false;
+  activeRoom[0]   = '\0';
 }
 
 // ── TOUCH HANDLING ───────────────────────────────────────────
@@ -690,7 +848,6 @@ void setup() {
     tft.print("Wi-Fi connected!");
     Serial.println("[WIFI] Ready");
     delay(300);
-    pendingSessionOpen = true;
   } else {
     tft.setTextColor(COL_WIFI_FAIL);
     tft.setCursor(120, 165);
@@ -702,9 +859,9 @@ void setup() {
   Serial.println("[HTTP] Background task started on Core 0");
 
   delay(800);
-  currentScreen = SCREEN_HOME;
-  drawHomeScreen();
-  Serial.println("[KUPPI] Ready - scan a zone to begin");
+  currentScreen = SCREEN_SCAN_ROOM;
+  drawScanRoomScreen();
+  Serial.println("[KUPPI] Ready - scan a room tag to begin");
 }
 
 // ── LOOP (Core 1) ────────────────────────────────────────────
@@ -722,7 +879,7 @@ void loop() {
       lastTouchTime = millis();
       lastPressed   = true;
       if     (currentScreen == SCREEN_CHECKLIST) handleChecklistTouch(tp.x, tp.y);
-      else if(currentScreen == SCREEN_COMPLETE)  { resetAll(); drawHomeScreen(); }
+      else if(currentScreen == SCREEN_COMPLETE)  { resetAll(); drawScanRoomScreen(); }
       lastPressed   = false;
       lastTouchTime = millis();
     } else if(!tp.pressed){
@@ -731,7 +888,82 @@ void loop() {
     }
   }
 
-  // NFC — paused during checklist and non-home screens so touch has exclusive I2C access
+  // ── NFC: SCAN ROOM mode ───────────────────────────────────
+  if(currentScreen == SCREEN_SCAN_ROOM && millis() - lastNFCTime > 300){
+    lastNFCTime = millis();
+
+    // Check if a room lookup just completed
+    if(roomLookupDone) {
+      roomLookupDone = false;
+      if(roomLookupSuccess) {
+        // Room found! Show success then go to home screen
+        buzzComplete();
+        drawRoomFoundScreen();
+        delay(1500);
+        // Open session and start timer
+        pendingSessionOpen = true;
+        kuppiTimerStart = millis();
+        timerRunning = true;
+        currentScreen = SCREEN_HOME;
+        drawHomeScreen();
+        Serial.print("[ROOM] Identified room: "); Serial.println(activeRoom);
+      } else {
+        // Room not found
+        buzzOnce();
+        drawRoomNotFoundScreen();
+        delay(2000);
+        drawScanRoomScreen();
+      }
+      return;
+    }
+
+    // Try to read an NFC tag
+    uint8_t uid[7];
+    uint8_t uidLen = 0;
+    bool found = false;
+
+    if(xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+      found = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 50);
+      xSemaphoreGive(i2cMutex);
+    }
+
+    if(found){
+      // Build hex string from UID
+      char hexUID[20] = "";
+      for(int i = 0; i < uidLen && i < 7; i++) {
+        char hex[4];
+        snprintf(hex, sizeof(hex), "%02X", uid[i]);
+        strcat(hexUID, hex);
+      }
+      Serial.print("[NFC] Room tag UID: "); Serial.println(hexUID);
+
+      // Skip if it's a known zone tag
+      int zone = identifyZone(uid);
+      if(zone >= 0) {
+        Serial.println("[NFC] This is a zone tag, not a room tag — ignoring");
+        return;
+      }
+
+      // Send to server for room lookup
+      strncpy(roomLookupUID, hexUID, sizeof(roomLookupUID) - 1);
+      roomLookupDone = false;
+      roomLookupSuccess = false;
+      pendingRoomLookup = true;
+      buzzOnce();
+
+      // Show "Looking up..." on screen
+      tft.fillScreen(COL_BG);
+      drawHeader("KUPPI", "v4", "", false);
+      tft.setTextColor(COL_WIFI_SEND);
+      tft.setTextSize(2);
+      const char* msg = "Looking up room...";
+      int w = strlen(msg) * 12;
+      tft.setCursor((480 - w) / 2, 150);
+      tft.print(msg);
+    }
+  }
+
+  // ── NFC: ZONE SCAN mode (home screen) ─────────────────────
   if(currentScreen == SCREEN_HOME && millis() - lastNFCTime > 300){
     lastNFCTime = millis();
     uint8_t uid[7];
@@ -754,14 +986,6 @@ void loop() {
       if(zone >= 0){
         if(currentScreen == SCREEN_COMPLETE) return;
 
-        // Open session on first zone scan if not already running
-        if(!timerRunning) {
-          kuppiTimerStart = millis();
-          timerRunning = true;
-          pendingSessionOpen = true;
-          Serial.println("[SESSION] Opening session on first zone scan");
-        }
-
         buzzOnce();
         activeZone    = zone;
         scrollOffset  = 0;
@@ -769,7 +993,7 @@ void loop() {
         drawChecklistScreen(zone);
         Serial.print("[NFC] Zone: "); Serial.println(zoneNames[zone]);
       } else {
-        Serial.println("[NFC] Unknown tag");
+        Serial.println("[NFC] Unknown tag (not a zone)");
       }
     }
   }

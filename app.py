@@ -134,6 +134,48 @@ def sse_stream():
 # API endpoints
 # ---------------------------------------------------------------------------
 
+
+@app.route("/api/room-lookup/<nfc_uid>", methods=["GET"])
+def room_lookup(nfc_uid: str):
+    """
+    Look up a room by its door NFC tag UID.
+    Called by the KUPPI device when staff scans a room's door tag.
+
+    Returns:
+        200 + room_number if found
+        404 if nfc_uid not configured
+    """
+    nfc_uid = nfc_uid.strip().upper()
+    if not nfc_uid:
+        return jsonify({"error": "Missing nfc_uid"}), 400
+
+    try:
+        resp = (
+            supabase.table("rooms")
+            .select("room_number, floor, room_type, status")
+            .eq("nfc_uid", nfc_uid)
+            .limit(1)
+            .execute()
+        )
+
+        if not resp.data:
+            _log("ROOM_LOOKUP", f"NFC UID '{nfc_uid}' not found in rooms table")
+            return jsonify({"error": "Room not found for this NFC tag"}), 404
+
+        room = resp.data[0]
+        _log("ROOM_LOOKUP", f"nfc_uid={nfc_uid} → room={room['room_number']}")
+        return jsonify({
+            "room_number": room["room_number"],
+            "floor":       room.get("floor", ""),
+            "room_type":   room.get("room_type", ""),
+            "status":      room.get("status", "available"),
+        }), 200
+
+    except Exception as e:
+        _log("ROOM_LOOKUP_ERROR", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/scan", methods=["POST"])
 def receive_scan():
     """
