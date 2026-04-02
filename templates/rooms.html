@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KUPPI — Room Management</title>
 
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
   <style>
     /* ── Reset & base ─────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,37 +44,102 @@
       min-height: 100vh;
     }
 
+    /* ── Navigation Menu ───────────────────────────────────────────────────── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 1.25rem 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-weight: 500;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    nav a:hover {
+      color: var(--text);
+      border-bottom-color: #8091ed;
+    }
+
+    nav a.active {
+      color: #8091ed;
+      border-bottom-color: #5e72e4;
+    }
+
+    nav a i {
+      font-size: 1rem;
+    }
+
     /* ── Header ───────────────────────────────────────────────────────────── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem;
+      padding: 1.5rem 2rem;
       display: flex;
       align-items: center;
       gap: 1rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
     }
-    header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
-    header .logo span { color: var(--primary); }
-    header .subtitle { color: var(--text-muted); font-size: .9rem; }
-    header nav {
+
+    header .logo {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      background: linear-gradient(135deg, #5e72e4 0%, #ffa000 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    header .logo span {
+      color: var(--primary);
+    }
+
+    header .subtitle {
+      color: var(--text-muted);
+      font-size: .95rem;
+    }
+
+    header .live-badge {
       margin-left: auto;
       display: flex;
-      gap: 1rem;
-    }
-    header nav a {
-      color: var(--text);
-      text-decoration: none;
-      padding: .5rem 1rem;
-      border-radius: 6px;
-      transition: background .2s;
-    }
-    header nav a:hover {
-      background: var(--surface-2);
-    }
-    header nav a.active {
-      background: var(--primary);
-      color: var(--bg);
+      align-items: center;
+      gap: .5rem;
+      color: #66bb6a;
+      font-size: .85rem;
       font-weight: 600;
+      background: rgba(102, 187, 106, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+    }
+
+    header .live-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #66bb6a;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: .3;
+      }
     }
 
     /* ── Container ────────────────────────────────────────────────────────── */
@@ -345,13 +413,32 @@
 </head>
 <body>
 
+<nav>
+  <a href="/dashboard">
+    <i class="fas fa-chart-line"></i>
+    Dashboard
+  </a>
+  <a href="/rooms" class="active">
+    <i class="fas fa-door-open"></i>
+    Rooms
+  </a>
+  <a href="#staff" onclick="alert('Staff Performance page coming soon!'); return false;">
+    <i class="fas fa-users"></i>
+    Staff Performance
+  </a>
+  <a href="#analytics" onclick="alert('Analytics page coming soon!'); return false;">
+    <i class="fas fa-chart-bar"></i>
+    Analytics
+  </a>
+</nav>
+
 <header>
   <div class="logo">KU<span>PPI</span></div>
-  <div class="subtitle">Room Management</div>
-  <nav>
-    <a href="/dashboard">Dashboard</a>
-    <a href="/rooms" class="active">Rooms</a>
-  </nav>
+  <div class="subtitle">Housekeeping Quality Assurance</div>
+  <div class="live-badge">
+    <div class="dot"></div>
+    LIVE
+  </div>
 </header>
 
 <div class="container">
