@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,77 +9,135 @@
   <!-- Supabase JS client (loaded from CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- Chart.js for analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
   <style>
     /* ── Reset & base ─────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
-      --bg:           #0A0F2C;
-      --surface:      #121836;
-      --surface-2:    #1a2248;
-      --border:       #243060;
-      --text:         #e8eaf6;
-      --text-muted:   #8892b0;
+      --bg: #0A0F2C;
+      --bg-gradient: linear-gradient(135deg, #0A0F2C 0%, #1a1f3a 100%);
+      --surface: #121836;
+      --surface-2: #1a2248;
+      --surface-3: #222d50;
+      --border: #243060;
+      --text: #e8eaf6;
+      --text-muted: #8892b0;
 
-      --pending:      #607d8b;
-      --active:       #ffa000;
-      --complete:     #2e7d32;
-      --incomplete:   #c62828;
+      --primary: #5e72e4;
+      --primary-light: #8091ed;
+      --pending: #607d8b;
+      --active: #ffa000;
+      --complete: #2e7d32;
+      --incomplete: #c62828;
 
-      --pending-bg:   rgba(96,125,139,.15);
-      --active-bg:    rgba(255,160,0,.15);
-      --complete-bg:  rgba(46,125,50,.15);
-      --incomplete-bg:rgba(198,40,40,.15);
+      --pending-bg: rgba(96, 125, 139, .15);
+      --active-bg: rgba(255, 160, 0, .15);
+      --complete-bg: rgba(46, 125, 50, .15);
+      --incomplete-bg: rgba(198, 40, 40, .15);
 
-      --tick:         #66bb6a;
-      --cross:        #ef5350;
-      --bar-track:    #243060;
+      --tick: #66bb6a;
+      --cross: #ef5350;
+      --bar-track: #243060;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, .2);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, .3);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, .4);
 
       --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
       --radius: 12px;
       --gap: 1.25rem;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    html, body {
+    html,
+    body {
       background: var(--bg);
+      background: var(--bg-gradient);
       color: var(--text);
       font-family: var(--font);
       min-height: 100vh;
+    }
+
+    /* ── Navigation Menu ───────────────────────────────────────────────────── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 1.25rem 1rem;
+      border-bottom: 3px solid transparent;
+      transition: var(--transition);
+      font-weight: 500;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    nav a:hover {
+      color: var(--text);
+      border-bottom-color: var(--primary-light);
+    }
+
+    nav a.active {
+      color: var(--primary-light);
+      border-bottom-color: var(--primary);
+    }
+
+    nav a i {
+      font-size: 1rem;
     }
 
     /* ── Header ───────────────────────────────────────────────────────────── */
     header {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem;
+      padding: 1.5rem 2rem;
       display: flex;
       align-items: center;
       gap: 1rem;
+      box-shadow: var(--shadow-sm);
     }
-    header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
-    header .logo span { color: var(--active); }
-    header .subtitle { color: var(--text-muted); font-size: .9rem; }
-    header nav {
-      display: flex;
-      gap: 1rem;
-      margin-left: 2rem;
+
+    header .logo {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--active) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-    header nav a {
-      color: var(--text);
-      text-decoration: none;
-      padding: .5rem 1rem;
-      border-radius: 6px;
-      transition: background .2s;
-      font-size: .9rem;
+
+    header .logo span {
+      color: var(--active);
     }
-    header nav a:hover {
-      background: rgba(255,160,0,.1);
+
+    header .subtitle {
+      color: var(--text-muted);
+      font-size: .95rem;
     }
-    header nav a.active {
-      background: var(--active);
-      color: var(--bg);
-      font-weight: 600;
-    }
+
     header .live-badge {
       margin-left: auto;
       display: flex;
@@ -87,51 +146,215 @@
       color: var(--tick);
       font-size: .85rem;
       font-weight: 600;
+      background: rgba(102, 187, 106, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
     }
+
     header .live-badge .dot {
-      width: 8px; height: 8px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: var(--tick);
       animation: pulse 1.5s infinite;
     }
+
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: .3;
+      }
     }
 
     /* ── Stats bar ────────────────────────────────────────────────────────── */
     .stats-bar {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1.5rem;
-      padding: 1rem 2rem;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
       background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
+
     .stat-chip {
       display: flex;
-      align-items: center;
-      gap: .5rem;
-      font-size: .85rem;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 1.25rem;
+      background: var(--surface-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
     }
-    .stat-chip .count { font-weight: 700; font-size: 1.1rem; }
-    .stat-chip.pending  .count { color: var(--pending); }
-    .stat-chip.active   .count { color: var(--active); }
-    .stat-chip.complete .count { color: var(--tick); }
-    .stat-chip.incomplete .count { color: var(--cross); }
+
+    .stat-chip:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-chip .stat-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-chip .stat-header i {
+      font-size: 1rem;
+    }
+
+    .stat-chip .count {
+      font-weight: 700;
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .stat-chip.pending .count {
+      color: var(--pending);
+    }
+
+    .stat-chip.active .count {
+      color: var(--active);
+    }
+
+    .stat-chip.complete .count {
+      color: var(--tick);
+    }
+
+    .stat-chip.incomplete .count {
+      color: var(--cross);
+    }
+
+    .stat-chip.info .count {
+      color: var(--primary);
+    }
+
+    .stat-chip .stat-detail {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
 
     /* ── Main grid ────────────────────────────────────────────────────────── */
-    main {
+    .container {
+      display: flex;
+      gap: 2rem;
       padding: 2rem;
+    }
+
+    .main-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    main {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: var(--gap);
     }
-    @media (max-width: 900px) {
-      main { grid-template-columns: repeat(2, 1fr); }
+
+    @media (max-width: 1400px) {
+      main {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
+
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media (max-width: 560px) {
-      main { grid-template-columns: 1fr; padding: 1rem; }
+      .container {
+        padding: 1rem;
+      }
+    }
+
+    /* ── Control Bar ──────────────────────────────────────────────────────── */
+    .control-bar {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      transition: var(--transition);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 0.65rem 1rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .filter-btn:hover {
+      background: var(--surface-3);
+      color: var(--text);
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
     }
 
     /* ── Room tile ────────────────────────────────────────────────────────── */
@@ -139,22 +362,74 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1.25rem;
+      padding: 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: .75rem;
-      transition: transform .15s, box-shadow .15s;
+      gap: 1rem;
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
     }
+
+    .room-tile::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      transition: var(--transition);
+    }
+
     .room-tile:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-light);
     }
 
     /* status-specific left border accent */
-    .room-tile[data-status="pending"]    { border-left: 4px solid var(--pending); }
-    .room-tile[data-status="active"]     { border-left: 4px solid var(--active); background: var(--active-bg); }
-    .room-tile[data-status="complete"]   { border-left: 4px solid var(--complete); background: var(--complete-bg); }
-    .room-tile[data-status="incomplete"] { border-left: 4px solid var(--incomplete); background: var(--incomplete-bg); }
+    .room-tile[data-status="pending"]::before {
+      background: var(--pending);
+    }
+
+    .room-tile[data-status="active"]::before {
+      background: var(--active);
+    }
+
+    .room-tile[data-status="complete"]::before {
+      background: var(--complete);
+    }
+
+    .room-tile[data-status="incomplete"]::before {
+      background: var(--incomplete);
+    }
+
+    .room-tile[data-status="active"] {
+      background: var(--active-bg);
+      animation: subtle-pulse 2s infinite;
+    }
+
+    .room-tile[data-status="complete"] {
+      background: var(--complete-bg);
+    }
+
+    .room-tile[data-status="incomplete"] {
+      background: var(--incomplete-bg);
+    }
+
+    @keyframes subtle-pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.95;
+      }
+    }
 
     /* tile header row */
     .tile-header {
@@ -162,6 +437,7 @@
       align-items: center;
       justify-content: space-between;
     }
+
     .room-number {
       font-size: 1.8rem;
       font-weight: 800;
@@ -177,50 +453,128 @@
       padding: .25rem .65rem;
       border-radius: 999px;
     }
-    .status-badge.pending    { background: var(--pending-bg);    color: var(--pending); }
-    .status-badge.active     { background: var(--active-bg);     color: var(--active); }
-    .status-badge.complete   { background: var(--complete-bg);   color: var(--tick); }
-    .status-badge.incomplete { background: var(--incomplete-bg); color: var(--cross); }
+
+    .status-badge.pending {
+      background: var(--pending-bg);
+      color: var(--pending);
+    }
+
+    .status-badge.active {
+      background: var(--active-bg);
+      color: var(--active);
+    }
+
+    .status-badge.complete {
+      background: var(--complete-bg);
+      color: var(--tick);
+    }
+
+    .status-badge.incomplete {
+      background: var(--incomplete-bg);
+      color: var(--cross);
+    }
 
     /* progress bar */
-    .progress-wrap { display: flex; flex-direction: column; gap: .3rem; }
+    .progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+    }
+
     .progress-label {
       display: flex;
       justify-content: space-between;
-      font-size: .78rem;
+      font-size: .85rem;
       color: var(--text-muted);
+      font-weight: 500;
     }
+
     .progress-track {
-      height: 6px;
+      height: 8px;
       border-radius: 999px;
       background: var(--bar-track);
       overflow: hidden;
+      position: relative;
     }
+
     .progress-fill {
       height: 100%;
       border-radius: 999px;
-      transition: width .4s ease;
+      transition: width .6s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     }
-    [data-status="pending"]    .progress-fill { background: var(--pending); }
-    [data-status="active"]     .progress-fill { background: var(--active); }
-    [data-status="complete"]   .progress-fill { background: var(--tick); }
-    [data-status="incomplete"] .progress-fill { background: var(--cross); }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        transform: translateX(-100%);
+      }
+
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    [data-status="pending"] .progress-fill {
+      background: var(--pending);
+    }
+
+    [data-status="active"] .progress-fill {
+      background: linear-gradient(90deg, var(--active), var(--primary));
+    }
+
+    [data-status="complete"] .progress-fill {
+      background: linear-gradient(90deg, var(--tick), var(--complete));
+    }
+
+    [data-status="incomplete"] .progress-fill {
+      background: var(--cross);
+    }
 
     /* zone lists */
     .zones-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: .2rem .5rem;
-      font-size: .8rem;
+      gap: .4rem .6rem;
+      font-size: .82rem;
     }
+
     .zone-item {
       display: flex;
       align-items: center;
-      gap: .35rem;
+      gap: .4rem;
+      padding: 0.3rem 0;
     }
-    .zone-item.done  { color: var(--tick); }
-    .zone-item.miss  { color: var(--text-muted); }
-    .zone-icon { font-size: .9rem; flex-shrink: 0; }
+
+    .zone-item.done {
+      color: var(--tick);
+    }
+
+    .zone-item.miss {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .zone-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      width: 18px;
+      text-align: center;
+    }
 
     /* start time */
     .start-time {
@@ -236,8 +590,15 @@
       padding: 4rem 2rem;
       color: var(--text-muted);
     }
-    #empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
-    #empty-state p { font-size: 1rem; }
+
+    #empty-state .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+
+    #empty-state p {
+      font-size: 1rem;
+    }
 
     /* ── Toast notification ───────────────────────────────────────────────── */
     #toast-container {
@@ -250,131 +611,814 @@
       z-index: 9999;
       pointer-events: none;
     }
+
     .toast {
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: .65rem 1rem;
-      font-size: .83rem;
+      padding: .8rem 1.2rem;
+      font-size: .85rem;
       color: var(--text);
       opacity: 0;
       transform: translateX(20px);
       animation: toast-in .3s forwards, toast-out .3s 3.7s forwards;
-      max-width: 300px;
+      max-width: 320px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    @keyframes toast-in  { to { opacity: 1; transform: translateX(0); } }
-    @keyframes toast-out { to { opacity: 0; transform: translateX(20px); } }
+
+    .toast i {
+      font-size: 1rem;
+      color: var(--primary);
+    }
+
+    @keyframes toast-in {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes toast-out {
+      to {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+    }
+
+    /* ── Sidebar Panels ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-2);
+    }
+
+    .panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-title i {
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+
+    .panel-body {
+      padding: 1rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+      background: var(--surface-2);
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
+    }
+
+    /* Activity feed */
+    .activity-item {
+      padding: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      transition: var(--transition);
+    }
+
+    .activity-item:last-child {
+      border-bottom: none;
+    }
+
+    .activity-item:hover {
+      background: var(--surface-2);
+    }
+
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 0.9rem;
+    }
+
+    .activity-icon.scan {
+      background: rgba(94, 114, 228, 0.15);
+      color: var(--primary);
+    }
+
+    .activity-icon.session {
+      background: rgba(255, 160, 0, 0.15);
+      color: var(--active);
+    }
+
+    .activity-icon.complete {
+      background: rgba(46, 125, 50, 0.15);
+      color: var(--tick);
+    }
+
+    .activity-content {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .activity-content .activity-text {
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+
+    .activity-content .activity-time {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    /* Staff performance */
+    .staff-item {
+      padding: 1rem;
+      background: var(--surface-2);
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+      transition: var(--transition);
+    }
+
+    .staff-item:hover {
+      background: var(--surface-3);
+      transform: translateX(2px);
+    }
+
+    .staff-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .staff-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .staff-status {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .staff-status.active {
+      background: var(--active-bg);
+      color: var(--active);
+    }
+
+    .staff-status.idle {
+      background: var(--pending-bg);
+      color: var(--pending);
+    }
+
+    .staff-details {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .staff-progress {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .staff-progress-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--bar-track);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .staff-progress-fill {
+      height: 100%;
+      background: var(--active);
+      transition: width 0.5s ease;
+    }
+
+    /* Notifications/Alerts */
+    .alert-item {
+      padding: 1rem;
+      background: var(--surface-2);
+      border-left: 3px solid;
+      margin-bottom: 0.75rem;
+      border-radius: 4px;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+
+    .alert-item.warning {
+      border-left-color: var(--active);
+      background: rgba(255, 160, 0, 0.08);
+    }
+
+    .alert-item.error {
+      border-left-color: var(--cross);
+      background: rgba(239, 83, 80, 0.08);
+    }
+
+    .alert-item.info {
+      border-left-color: var(--primary);
+      background: rgba(94, 114, 228, 0.08);
+    }
+
+    .alert-icon {
+      font-size: 1.2rem;
+    }
+
+    .alert-item.warning .alert-icon {
+      color: var(--active);
+    }
+
+    .alert-item.error .alert-icon {
+      color: var(--cross);
+    }
+
+    .alert-item.info .alert-icon {
+      color: var(--primary);
+    }
+
+    .alert-content {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .alert-message {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .alert-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Room Details Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 700px;
+      max-height: 85vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(50px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface-2);
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      transition: var(--transition);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .modal-close:hover {
+      color: var(--text);
+      background: var(--surface-3);
+    }
+
+    .modal-body {
+      padding: 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-body::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .modal-body::-webkit-scrollbar-track {
+      background: var(--surface-2);
+    }
+
+    .modal-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .modal-section {
+      margin-bottom: 2rem;
+    }
+
+    .modal-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .modal-section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .modal-section-title i {
+      color: var(--primary);
+    }
+
+    .scan-history-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.85rem;
+      background: var(--surface-2);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .scan-history-icon {
+      font-size: 1.5rem;
+    }
+
+    .scan-history-details {
+      flex: 1;
+    }
+
+    .scan-history-area {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .scan-history-time {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
+
 <body>
 
-<header>
-  <div class="logo">KU<span>PPI</span></div>
-  <div class="subtitle">Housekeeping Quality Assurance</div>
   <nav>
-    <a href="/dashboard" class="active">Dashboard</a>
-    <a href="/rooms">Rooms</a>
+    <a href="/dashboard" class="active">
+      <i class="fas fa-chart-line"></i>
+      Dashboard
+    </a>
+    <a href="/rooms">
+      <i class="fas fa-door-open"></i>
+      Rooms
+    </a>
+    <a href="#staff" onclick="alert('Staff Performance page coming soon!'); return false;">
+      <i class="fas fa-users"></i>
+      Staff Performance
+    </a>
+    <a href="#analytics" onclick="alert('Analytics page coming soon!'); return false;">
+      <i class="fas fa-chart-bar"></i>
+      Analytics
+    </a>
   </nav>
-  <div class="live-badge">
-    <div class="dot"></div>
-    LIVE
+
+  <header>
+    <div class="logo">KU<span>PPI</span></div>
+    <div class="subtitle">Housekeeping Quality Assurance</div>
+    <div class="live-badge">
+      <div class="dot"></div>
+      LIVE
+    </div>
+  </header>
+
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-chip pending">
+      <div class="stat-header">
+        <i class="fas fa-clock"></i>
+        <span>Pending</span>
+      </div>
+      <span class="count" id="cnt-pending">—</span>
+      <div class="stat-detail">Awaiting cleaning</div>
+    </div>
+    <div class="stat-chip active">
+      <div class="stat-header">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Active</span>
+      </div>
+      <span class="count" id="cnt-active">—</span>
+      <div class="stat-detail">In progress</div>
+    </div>
+    <div class="stat-chip complete">
+      <div class="stat-header">
+        <i class="fas fa-check-circle"></i>
+        <span>Complete</span>
+      </div>
+      <span class="count" id="cnt-complete">—</span>
+      <div class="stat-detail">Successfully cleaned</div>
+    </div>
+    <div class="stat-chip incomplete">
+      <div class="stat-header">
+        <i class="fas fa-times-circle"></i>
+        <span>Incomplete</span>
+      </div>
+      <span class="count" id="cnt-incomplete">—</span>
+      <div class="stat-detail">Not fully completed</div>
+    </div>
+    <div class="stat-chip info">
+      <div class="stat-header">
+        <i class="fas fa-percentage"></i>
+        <span>Completion Rate</span>
+      </div>
+      <span class="count" id="cnt-completion-rate">—</span>
+      <div class="stat-detail">Today's performance</div>
+    </div>
+    <div class="stat-chip info">
+      <div class="stat-header">
+        <i class="fas fa-clock"></i>
+        <span>Avg. Time</span>
+      </div>
+      <span class="count" id="cnt-avg-time">—</span>
+      <div class="stat-detail">Per room (minutes)</div>
+    </div>
   </div>
-</header>
 
-<div class="stats-bar" id="stats-bar">
-  <div class="stat-chip pending">
-    <span class="count" id="cnt-pending">—</span> Pending
+  <div class="container">
+    <div class="main-content">
+      <div class="control-bar">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="search-input" placeholder="Search rooms..." />
+        </div>
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">
+            <i class="fas fa-list"></i> All
+          </button>
+          <button class="filter-btn" data-filter="pending">
+            <i class="fas fa-clock"></i> Pending
+          </button>
+          <button class="filter-btn" data-filter="active">
+            <i class="fas fa-spinner"></i> Active
+          </button>
+          <button class="filter-btn" data-filter="complete">
+            <i class="fas fa-check"></i> Complete
+          </button>
+          <button class="filter-btn" data-filter="incomplete">
+            <i class="fas fa-times"></i> Incomplete
+          </button>
+        </div>
+      </div>
+
+      <main id="grid">
+        <div id="empty-state">
+          <div class="icon">🏨</div>
+          <p>Loading room data…</p>
+        </div>
+      </main>
+    </div>
+
+    <aside class="sidebar">
+      <!-- Staff Performance Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fas fa-users"></i>
+            Active Staff
+          </div>
+        </div>
+        <div class="panel-body" id="staff-panel">
+          <div class="staff-item">
+            <div class="staff-header">
+              <div class="staff-name">Loading...</div>
+              <div class="staff-status idle">Idle</div>
+            </div>
+            <div class="staff-details">No active sessions</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fas fa-bell"></i>
+            Alerts
+          </div>
+        </div>
+        <div class="panel-body" id="alerts-panel">
+          <div class="alert-item info">
+            <i class="fas fa-info-circle alert-icon"></i>
+            <div class="alert-content">
+              <div class="alert-title">System Ready</div>
+              <div class="alert-message">Dashboard is monitoring all rooms</div>
+              <div class="alert-time">Just now</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i class="fas fa-history"></i>
+            Recent Activity
+          </div>
+        </div>
+        <div class="panel-body" id="activity-panel">
+          <div class="activity-item">
+            <div class="activity-icon scan">
+              <i class="fas fa-qrcode"></i>
+            </div>
+            <div class="activity-content">
+              <div class="activity-text">Waiting for events...</div>
+              <div class="activity-time">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
-  <div class="stat-chip active">
-    <span class="count" id="cnt-active">—</span> Active
+
+  <!-- Room Details Modal -->
+  <div class="modal" id="room-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-door-open"></i>
+          <span id="modal-room-title">Room Details</span>
+        </div>
+        <button class="modal-close" onclick="closeRoomModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Content will be dynamically inserted -->
+      </div>
+    </div>
   </div>
-  <div class="stat-chip complete">
-    <span class="count" id="cnt-complete">—</span> Complete
-  </div>
-  <div class="stat-chip incomplete">
-    <span class="count" id="cnt-incomplete">—</span> Incomplete
-  </div>
-</div>
 
-<main id="grid">
-  <div id="empty-state">
-    <div class="icon">🏨</div>
-    <p>Loading room data…</p>
-  </div>
-</main>
+  <div id="toast-container"></div>
 
-<div id="toast-container"></div>
+  <script>
+    // ── Configuration injected by Flask ───────────────────────────────────────
+    const SUPABASE_URL = {{ supabase_url | tojson }};
+    const SUPABASE_KEY = {{ supabase_key | tojson }};
 
-<script>
-  // ── Configuration injected by Flask ───────────────────────────────────────
-  const SUPABASE_URL = {{ supabase_url | tojson }};
-  const SUPABASE_KEY = {{ supabase_key | tojson }};
+    const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
+    const ZONE_ICONS = {
+      "Toilet": "fas fa-toilet",
+      "Wardrobe": "fas fa-tshirt",
+      "Study Desk": "fas fa-desk",
+      "Bed": "fas fa-bed",
+      "Curtain": "fas fa-window-maximize",
+      "Drinks Bar": "fas fa-wine-glass"
+    };
+    const TOTAL = ZONES.length;
 
-  const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
-  const TOTAL  = ZONES.length;
+    // ── Supabase client ────────────────────────────────────────────────────────
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ── Supabase client ────────────────────────────────────────────────────────
-  const { createClient } = supabase;
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ── State ──────────────────────────────────────────────────────────────────
+    let roomState = {};   // room_number -> { status, zones_done, scanned, missing, start_time }
+    let currentFilter = 'all';
+    let searchQuery = '';
+    let recentActivity = [];
+    let activeStaff = {};
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let roomState = {};   // room_number -> { status, zones_done, scanned, missing, start_time }
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function fmt(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  function fmt(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
+    function fmtFull(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleString();
+    }
 
-  function statusLabel(s) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
+    function timeAgo(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      const seconds = Math.floor((new Date() - d) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      return `${Math.floor(hours / 24)}d ago`;
+    }
 
-  function showToast(msg) {
-    const el = document.createElement('div');
-    el.className = 'toast';
-    el.textContent = msg;
-    document.getElementById('toast-container').appendChild(el);
-    setTimeout(() => el.remove(), 4200);
-  }
+    function statusLabel(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  function updateStats() {
-    const counts = { pending: 0, active: 0, complete: 0, incomplete: 0 };
-    Object.values(roomState).forEach(r => {
-      const k = r.status || 'pending';
-      counts[k] = (counts[k] || 0) + 1;
-    });
-    document.getElementById('cnt-pending').textContent   = counts.pending;
-    document.getElementById('cnt-active').textContent    = counts.active;
-    document.getElementById('cnt-complete').textContent  = counts.complete;
-    document.getElementById('cnt-incomplete').textContent = counts.incomplete;
-  }
+    function showToast(msg, icon = 'fa-info-circle') {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
 
-  function renderTile(room) {
-    const data   = roomState[room];
-    const pct    = Math.round((data.zones_done / TOTAL) * 100);
-    const status = data.status || 'pending';
+    // ── Render ─────────────────────────────────────────────────────────────────
+    function updateStats() {
+      const counts = { pending: 0, active: 0, complete: 0, incomplete: 0, total: 0 };
+      const rooms = Object.values(roomState);
 
-    const scannedSet = new Set(data.scanned || []);
+      rooms.forEach(r => {
+        counts.total++;
+        const k = r.status || 'pending';
+        counts[k] = (counts[k] || 0) + 1;
+      });
 
-    const zonesHtml = ZONES.map(z => {
-      const done = scannedSet.has(z);
-      return `<div class="zone-item ${done ? 'done' : 'miss'}">
-        <span class="zone-icon">${done ? '✅' : '❌'}</span>
+      document.getElementById('cnt-pending').textContent = counts.pending;
+      document.getElementById('cnt-active').textContent = counts.active;
+      document.getElementById('cnt-complete').textContent = counts.complete;
+      document.getElementById('cnt-incomplete').textContent = counts.incomplete;
+
+      // Completion rate
+      const completionRate = counts.total > 0
+        ? Math.round((counts.complete / counts.total) * 100)
+        : 0;
+      document.getElementById('cnt-completion-rate').textContent = `${completionRate}%`;
+
+      // Average time (placeholder - would need session data)
+      document.getElementById('cnt-avg-time').textContent = '—';
+      calculateAvgTime();
+    }
+
+    async function calculateAvgTime() {
+      try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { data } = await db
+          .from('sessions')
+          .select('start_time, end_time')
+          .eq('status', 'complete')
+          .gte('start_time', today.toISOString());
+
+        if (data && data.length > 0) {
+          let totalMinutes = 0;
+          data.forEach(session => {
+            if (session.end_time) {
+              const start = new Date(session.start_time);
+              const end = new Date(session.end_time);
+              totalMinutes += (end - start) / (1000 * 60);
+            }
+          });
+          const avg = Math.round(totalMinutes / data.length);
+          document.getElementById('cnt-avg-time').textContent = avg;
+        }
+      } catch (err) {
+        console.error('Failed to calculate average time:', err);
+      }
+    }
+
+    function getZoneIcon(zoneName) {
+      return ZONE_ICONS[zoneName] || 'fas fa-question';
+    }
+
+    function renderTile(room) {
+      const data = roomState[room];
+      const pct = Math.round((data.zones_done / TOTAL) * 100);
+      const status = data.status || 'pending';
+
+      const scannedSet = new Set(data.scanned || []);
+
+      const zonesHtml = ZONES.map(z => {
+        const done = scannedSet.has(z);
+        const iconClass = done ? 'fas fa-check-circle' : 'fas fa-circle';
+        return `<div class="zone-item ${done ? 'done' : 'miss'}">
+        <span class="zone-icon"><i class="${iconClass}"></i></span>
         <span>${z}</span>
       </div>`;
-    }).join('');
+      }).join('');
 
-    const startHtml = data.start_time
-      ? `<div class="start-time">Started ${fmt(data.start_time)}</div>`
-      : '';
+      const startHtml = data.start_time
+        ? `<div class="start-time"><i class="fas fa-clock"></i> Started ${fmt(data.start_time)}</div>`
+        : '';
 
-    return `
-      <div class="room-tile" id="tile-${room}" data-status="${status}">
+      return `
+      <div class="room-tile" id="tile-${room}" data-status="${status}" data-room="${room}" onclick="showRoomDetails('${room}')">
         <div class="tile-header">
-          <div class="room-number">Room ${room}</div>
+          <div class="room-number"><i class="fas fa-door-open"></i> ${room}</div>
           <div class="status-badge ${status}">${statusLabel(status)}</div>
         </div>
         <div class="progress-wrap">
@@ -389,98 +1433,327 @@
         <div class="zones-grid">${zonesHtml}</div>
         ${startHtml}
       </div>`;
-  }
-
-  function renderGrid() {
-    const grid = document.getElementById('grid');
-    const rooms = Object.keys(roomState).sort((a, b) =>
-      // Natural (numeric-aware) sort so '10' comes after '9', not after '1'
-      a.localeCompare(b, undefined, { numeric: true }));
-
-    if (rooms.length === 0) {
-      grid.innerHTML = `<div id="empty-state">
-        <div class="icon">🏨</div>
-        <p>No rooms found. Add rooms to the <code>rooms</code> table in Supabase.</p>
-      </div>`;
-      return;
     }
 
-    // Preserve existing tiles and do granular updates when possible
-    rooms.forEach(room => {
-      const existing = document.getElementById(`tile-${room}`);
-      const html = renderTile(room);
-      if (existing) {
-        existing.outerHTML = html;
-      } else {
-        grid.insertAdjacentHTML('beforeend', html);
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      let rooms = Object.keys(roomState).sort((a, b) =>
+        // Natural (numeric-aware) sort so '10' comes after '9', not after '1'
+        a.localeCompare(b, undefined, { numeric: true }));
+
+      // Apply filter
+      if (currentFilter !== 'all') {
+        rooms = rooms.filter(room => {
+          const status = roomState[room].status || 'pending';
+          return status === currentFilter;
+        });
+      }
+
+      // Apply search
+      if (searchQuery) {
+        rooms = rooms.filter(room => room.toLowerCase().includes(searchQuery.toLowerCase()));
+      }
+
+      // Clear empty state if exists
+      const emptyState = document.getElementById('empty-state');
+      if (emptyState) emptyState.remove();
+
+      if (rooms.length === 0) {
+        grid.innerHTML = `<div id="empty-state">
+        <div class="icon"><i class="fas fa-search"></i></div>
+        <p>No rooms match your current filter or search.</p>
+      </div>`;
+        return;
+      }
+
+      // Track existing room IDs
+      const existingRoomIds = new Set(rooms);
+
+      // Update or create tiles for filtered rooms
+      rooms.forEach(room => {
+        const existing = document.getElementById(`tile-${room}`);
+        const html = renderTile(room);
+        if (existing) {
+          existing.outerHTML = html;
+        } else {
+          grid.insertAdjacentHTML('beforeend', html);
+        }
+      });
+
+      // Remove tiles that don't match filter/search
+      grid.querySelectorAll('.room-tile').forEach(el => {
+        const r = el.getAttribute('data-room');
+        if (!existingRoomIds.has(r)) {
+          el.remove();
+        }
+      });
+    }
+
+    // ── Fetch full status from REST API ────────────────────────────────────────
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        data.forEach(room => {
+          roomState[room.room] = room;
+        });
+
+        renderGrid();
+        updateStats();
+      } catch (err) {
+        console.error('Failed to load room status:', err);
+      }
+    }
+
+    // ── Supabase real-time subscription ────────────────────────────────────────
+    function subscribeRealtime() {
+      // Listen for new scans — refresh the affected room tile immediately
+      db.channel('kuppi-realtime')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'scans' },
+          async (payload) => {
+            console.log('Scan event:', payload);
+            const row = payload.new || {};
+            addActivity('scan', `Scan recorded in Room ${row.room || '?'}: ${row.area || '?'}`, new Date().toISOString());
+            await loadStatus();
+            showToast('New scan received', 'fa-qrcode');
+          })
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'sessions' },
+          async (payload) => {
+            console.log('Session event:', payload);
+            const row = payload.new || {};
+            const verb = payload.eventType === 'INSERT' ? 'opened' :
+              (row.status === 'complete' ? 'completed' :
+                row.status === 'incomplete' ? 'incomplete' : 'updated');
+            addActivity('session', `Room ${row.room} session ${verb}`, new Date().toISOString());
+            await loadStatus();
+            if (row.room) {
+              const icon = row.status === 'complete' ? 'fa-check-circle' : 'fa-door-open';
+              showToast(`Room ${row.room} session ${verb}`, icon);
+            }
+            checkAlerts(row);
+          })
+        .subscribe(status => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Real-time channel connected');
+          }
+        });
+    }
+
+    // ── Modal Functions ─────────────────────────────────────────────────────────
+    function showRoomDetails(roomNum) {
+      const room = roomState[roomNum];
+      if (!room) return;
+
+      document.getElementById('modal-room-title').textContent = `Room ${roomNum}`;
+
+      const status = room.status || 'pending';
+      const scannedSet = new Set(room.scanned || []);
+      const pct = Math.round((room.zones_done / TOTAL) * 100);
+
+      const zonesDetails = ZONES.map(z => {
+        const done = scannedSet.has(z);
+        const icon = done ? 'fas fa-check-circle' : 'fas fa-circle';
+        const color = done ? 'var(--tick)' : 'var(--text-muted)';
+        return `
+        <div class="scan-history-item">
+          <i class="${icon}" style="color: ${color}; font-size: 1.5rem;"></i>
+          <div class="scan-history-details">
+            <div class="scan-history-area">${z}</div>
+            <div class="scan-history-time">${done ? 'Completed' : 'Not scanned'}</div>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      const modalBody = `
+      <div class="modal-section">
+        <div class="modal-section-title">
+          <i class="fas fa-info-circle"></i>
+          Status Overview
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Status</div>
+            <div class="status-badge ${status}">${statusLabel(status)}</div>
+          </div>
+          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Progress</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">${pct}%</div>
+          </div>
+          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Zones Done</div>
+            <div style="font-size: 1.5rem; font-weight: 700;">${room.zones_done} / ${TOTAL}</div>
+          </div>
+          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Started</div>
+            <div style="font-size: 0.95rem; font-weight: 600;">${room.start_time ? fmt(room.start_time) : '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-title">
+          <i class="fas fa-list-check"></i>
+          Zone Details
+        </div>
+        ${zonesDetails}
+      </div>
+    `;
+
+      document.getElementById('modal-body').innerHTML = modalBody;
+      document.getElementById('room-modal').classList.add('active');
+    }
+
+    function closeRoomModal() {
+      document.getElementById('room-modal').classList.remove('active');
+    }
+
+    // Close modal on backdrop click
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('room-modal');
+      if (e.target === modal) {
+        closeRoomModal();
       }
     });
 
-    // Remove tiles for rooms that no longer exist
-    grid.querySelectorAll('.room-tile').forEach(el => {
-      const r = el.id.replace('tile-', '');
-      if (!roomState[r]) el.remove();
-    });
-  }
-
-  // ── Fetch full status from REST API ────────────────────────────────────────
-  async function loadStatus() {
-    try {
-      const res = await fetch('/api/status');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      data.forEach(room => {
-        roomState[room.room] = room;
+    // ── Filter & Search Functions ───────────────────────────────────────────────
+    function setupFiltersAndSearch() {
+      // Filter buttons
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentFilter = btn.getAttribute('data-filter');
+          renderGrid();
+        });
       });
 
-      renderGrid();
-      updateStats();
-    } catch (err) {
-      console.error('Failed to load room status:', err);
+      // Search input
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderGrid();
+      });
     }
-  }
 
-  // ── Supabase real-time subscription ────────────────────────────────────────
-  function subscribeRealtime() {
-    // Listen for new scans — refresh the affected room tile immediately
-    db.channel('kuppi-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'scans' },
-        async (payload) => {
-          console.log('Scan event:', payload);
-          // Re-fetch full status to get updated zone lists
-          await loadStatus();
-          showToast('📡 New scan received');
-        })
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'sessions' },
-        async (payload) => {
-          console.log('Session event:', payload);
-          const row = payload.new || {};
-          const verb = payload.eventType === 'INSERT' ? 'opened' :
-                       (row.status === 'complete' ? 'completed ✓' :
-                        row.status === 'incomplete' ? 'incomplete ✗' : 'updated');
-          await loadStatus();
-          if (row.room) showToast(`Room ${row.room} session ${verb}`);
-        })
-      .subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Real-time channel connected');
+    // ── Activity Feed ────────────────────────────────────────────────────────────
+    function addActivity(type, text, time) {
+      recentActivity.unshift({ type, text, time });
+      if (recentActivity.length > 10) recentActivity.pop();
+      renderActivity();
+    }
+
+    function renderActivity() {
+      const panel = document.getElementById('activity-panel');
+      if (recentActivity.length === 0) {
+        panel.innerHTML = `
+        <div class="activity-item">
+          <div class="activity-icon scan">
+            <i class="fas fa-qrcode"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-text">Waiting for events...</div>
+            <div class="activity-time">—</div>
+          </div>
+        </div>
+      `;
+        return;
+      }
+
+      const html = recentActivity.map(activity => {
+        const iconClass = activity.type === 'scan' ? 'scan' :
+          activity.text.includes('completed') ? 'complete' : 'session';
+        const icon = activity.type === 'scan' ? 'fa-qrcode' : 'fa-door-open';
+        return `
+        <div class="activity-item">
+          <div class="activity-icon ${iconClass}">
+            <i class="fas ${icon}"></i>
+          </div>
+          <div class="activity-content">
+            <div class="activity-text">${activity.text}</div>
+            <div class="activity-time">${timeAgo(activity.time)}</div>
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      panel.innerHTML = html;
+    }
+
+    // ── Alerts System ─────────────────────────────────────────────────────────────
+    function checkAlerts(session) {
+      const alerts = [];
+
+      // Check for long-running sessions (> 30 minutes)
+      if (session.status === 'active' && session.start_time) {
+        const start = new Date(session.start_time);
+        const now = new Date();
+        const minutes = (now - start) / (1000 * 60);
+        if (minutes > 30) {
+          addAlert('warning', 'Long Session', `Room ${session.room} has been in progress for ${Math.round(minutes)} minutes`, new Date().toISOString());
         }
-      });
-  }
+      }
 
-  // ── Initialise ─────────────────────────────────────────────────────────────
-  (async () => {
-    await loadStatus();
-    subscribeRealtime();
+      // Check for incomplete sessions
+      if (session.status === 'incomplete') {
+        addAlert('error', 'Incomplete Session', `Room ${session.room} was marked incomplete`, new Date().toISOString());
+      }
+    }
 
-    // Fallback poll every 30 s in case the real-time WebSocket is unavailable
-    // (e.g. network restrictions, Supabase plan limits, or initial load race).
-    setInterval(loadStatus, 30_000);
-  })();
-</script>
+    function addAlert(type, title, message, time) {
+      const panel = document.getElementById('alerts-panel');
+      const alertHtml = `
+      <div class="alert-item ${type}">
+        <i class="fas ${type === 'warning' ? 'fa-exclamation-triangle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle'} alert-icon"></i>
+        <div class="alert-content">
+          <div class="alert-title">${title}</div>
+          <div class="alert-message">${message}</div>
+          <div class="alert-time">${timeAgo(time)}</div>
+        </div>
+      </div>
+    `;
+      panel.insertAdjacentHTML('afterbegin', alertHtml);
+
+      // Keep only last 5 alerts
+      const alerts = panel.querySelectorAll('.alert-item');
+      if (alerts.length > 5) {
+        alerts[alerts.length - 1].remove();
+      }
+    }
+
+    // ── Staff Performance (placeholder) ──────────────────────────────────────────
+    async function updateStaffPanel() {
+      // This would fetch active staff from sessions or a dedicated endpoint
+      // For now, showing placeholder
+      const panel = document.getElementById('staff-panel');
+      panel.innerHTML = `
+      <div class="staff-item">
+        <div class="staff-header">
+          <div class="staff-name">No Active Staff</div>
+          <div class="staff-status idle">Idle</div>
+        </div>
+        <div class="staff-details">No active cleaning sessions</div>
+      </div>
+    `;
+    }
+
+    // ── Initialise ─────────────────────────────────────────────────────────────
+    (async () => {
+      await loadStatus();
+      setupFiltersAndSearch();
+      subscribeRealtime();
+      updateStaffPanel();
+
+      // Fallback poll every 30 s in case the real-time WebSocket is unavailable
+      // (e.g. network restrictions, Supabase plan limits, or initial load race).
+      setInterval(loadStatus, 30_000);
+      setInterval(() => renderActivity(), 60_000); // Update time-ago every minute
+    })();
+  </script>
 
 </body>
+
 </html>
