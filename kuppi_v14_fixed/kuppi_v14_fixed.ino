@@ -315,14 +315,16 @@ void httpTask(void* parameter) {
       pendingStaffLookup = false;
       sendStaffLookup();
     }
+    // Session open MUST be processed before scans, otherwise
+    // the server rejects the scan with "No active session"
+    if(pendingSessionOpen) {
+      pendingSessionOpen = false;
+      sendSessionOpen();
+    }
     if(pendingScanZone >= 0) {
       int zone = pendingScanZone;
       pendingScanZone = -1;
       sendScanEvent(zone);
-    }
-    if(pendingSessionOpen) {
-      pendingSessionOpen = false;
-      sendSessionOpen();
     }
     if(pendingSessionClose) {
       pendingSessionClose = false;

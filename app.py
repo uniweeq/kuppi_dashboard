@@ -239,7 +239,6 @@ def open_session():
         "room":       room,
         "start_time": _now_iso(),
         "status":     "active",
-        "staff_id":   staff_id,
     }
     resp = supabase.table("sessions").insert(session_row).execute()
     session = resp.data[0] if resp.data else {}
