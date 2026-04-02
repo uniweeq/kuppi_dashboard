@@ -1,161 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KUPPI — Room Management</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
 
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+{% block title %}Room Management{% endblock %}
 
-    :root {
-      --bg:            #f0f2fb;
-      --sidebar-bg:    #ffffff;
-      --card-bg:       #ffffff;
-
-      --indigo:        #5B52E8;
-      --indigo-light:  #edecfd;
-      --indigo-xlight: #f5f4ff;
-
-      --available-c:    #22C07A;
-      --available-bg:   #edfaf3;
-      --blocked-c:      #E85252;
-      --blocked-bg:     #fff0f0;
-      --maintenance-c:  #E8A020;
-      --maintenance-bg: #fff8ec;
-      --inactive-c:     #9BAAB8;
-      --inactive-bg:    #f3f6f9;
-
-      --text:          #1a1a2e;
-      --text-2:        #4a4a6a;
-      --text-muted:    #9a9ab0;
-      --border:        #e4e6f0;
-      --border-light:  #f0f2f8;
-
-      --font-body: 'Nunito Sans', sans-serif;
-      --font-head: 'Barlow', sans-serif;
-      --radius: 14px;
-      --sidebar-w: 270px;
-    }
-
-    html, body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      font-size: 17px;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .shell { display: flex; min-height: 100vh; }
-
-    /* ── Sidebar ──────────────────────────────────────────────────── */
-    .sidebar {
-      width: var(--sidebar-w);
-      background: var(--sidebar-bg);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 2rem 1.25rem;
-      position: fixed;
-      top: 0; left: 0; bottom: 0;
-      z-index: 10;
-    }
-
-    .logo {
-      font-family: var(--font-head);
-      font-size: 1.9rem;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: .02em;
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-      padding: .25rem .5rem;
-      margin-bottom: .75rem;
-    }
-    .logo-mark {
-      width: 40px; height: 40px;
-      background: var(--indigo);
-      border-radius: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      color: white;
-      flex-shrink: 0;
-    }
-    .logo em { color: var(--indigo); font-style: normal; }
-
-    .nav-section { margin-top: 1.75rem; }
-    .nav-label {
-      font-size: .75rem;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 0 .85rem;
-      margin-bottom: .5rem;
-    }
-    nav a {
-      display: flex;
-      align-items: center;
-      gap: .8rem;
-      padding: .75rem .85rem;
-      border-radius: 10px;
-      text-decoration: none;
-      color: var(--text-2);
-      font-weight: 600;
-      font-size: 1rem;
-      transition: all .15s;
-      margin-bottom: 3px;
-    }
-    nav a .ico { font-size: 18px; width: 22px; text-align: center; opacity: .8; }
-    nav a:hover { background: var(--bg); color: var(--text); }
-    nav a.active { background: var(--indigo-light); color: var(--indigo); }
-    nav a.active .ico { opacity: 1; }
-
-    .sidebar-promo {
-      margin-top: auto;
-      background: linear-gradient(145deg, #5B52E8, #8B80F8);
-      border-radius: 14px;
-      padding: 1.35rem;
-      color: white;
-    }
-    .sidebar-promo strong {
-      font-family: var(--font-head);
-      font-size: 1.1rem;
-      font-weight: 700;
-      display: block;
-      margin-bottom: .4rem;
-    }
-    .sidebar-promo p { font-size: .88rem; opacity: .85; line-height: 1.5; }
-
-    /* ── Main ─────────────────────────────────────────────────────── */
-    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
-
-    /* ── Topbar ───────────────────────────────────────────────────── */
-    .topbar {
-      background: white;
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 2.5rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      position: sticky;
-      top: 0;
-      z-index: 9;
-    }
-    .topbar-title {
-      font-family: var(--font-head);
-      font-size: 1.5rem;
-      font-weight: 800;
-      letter-spacing: .01em;
-    }
-    .topbar-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
-
+{% block page_styles %}
+    /* ── Room management specific styles ──────────────────────────── */
     .btn-add {
       margin-left: auto;
       display: flex;
@@ -195,10 +43,10 @@
       border: 1px solid transparent;
     }
     .summary-pill .sp-count { font-family: var(--font-head); font-size: 1.1rem; }
-    .summary-pill.available   { background: var(--available-bg);   color: var(--available-c);   border-color: #a7edd0; }
-    .summary-pill.blocked     { background: var(--blocked-bg);     color: var(--blocked-c);     border-color: #f9c0c0; }
-    .summary-pill.maintenance { background: var(--maintenance-bg); color: var(--maintenance-c); border-color: #f9dcaa; }
-    .summary-pill.inactive    { background: var(--inactive-bg);    color: var(--inactive-c);    border-color: #d4dce5; }
+    .summary-pill.available   { background: var(--complete-bg);   color: var(--complete-c);   border-color: #a7edd0; }
+    .summary-pill.blocked     { background: var(--incomplete-bg); color: var(--incomplete-c); border-color: #f9c0c0; }
+    .summary-pill.maintenance { background: var(--active-bg);     color: var(--active-c);     border-color: #f9dcaa; }
+    .summary-pill.inactive    { background: var(--pending-bg);    color: var(--pending-c);    border-color: #d4dce5; }
 
     /* ── Table card ───────────────────────────────────────────────── */
     .table-card {
@@ -292,14 +140,14 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .status-badge.available   { background: var(--available-bg);   color: var(--available-c); }
-    .status-badge.available::before   { background: var(--available-c); }
-    .status-badge.blocked     { background: var(--blocked-bg);     color: var(--blocked-c); }
-    .status-badge.blocked::before     { background: var(--blocked-c); }
-    .status-badge.maintenance { background: var(--maintenance-bg); color: var(--maintenance-c); }
-    .status-badge.maintenance::before { background: var(--maintenance-c); }
-    .status-badge.inactive    { background: var(--inactive-bg);    color: var(--inactive-c); }
-    .status-badge.inactive::before    { background: var(--inactive-c); }
+    .status-badge.available   { background: var(--complete-bg);   color: var(--complete-c); }
+    .status-badge.available::before   { background: var(--complete-c); }
+    .status-badge.blocked     { background: var(--incomplete-bg); color: var(--incomplete-c); }
+    .status-badge.blocked::before     { background: var(--incomplete-c); }
+    .status-badge.maintenance { background: var(--active-bg);     color: var(--active-c); }
+    .status-badge.maintenance::before { background: var(--active-c); }
+    .status-badge.inactive    { background: var(--pending-bg);    color: var(--pending-c); }
+    .status-badge.inactive::before    { background: var(--pending-c); }
 
     /* ── Time badge for cleaning duration ──────────────────────── */
     .time-badge {
@@ -354,10 +202,10 @@
     .btn-edit:hover { background: var(--indigo-light); }
     .btn-del {
       background: white;
-      color: var(--blocked-c);
+      color: var(--incomplete-c);
       border-color: #f9c0c0;
     }
-    .btn-del:hover { background: var(--blocked-bg); }
+    .btn-del:hover { background: var(--incomplete-bg); }
 
     /* ── Empty / loading ──────────────────────────────────────────── */
     .empty-state {
@@ -496,92 +344,36 @@
     }
     .mbtn-save:hover { background: #4840d0; }
     .mbtn-danger {
-      background: var(--blocked-c);
+      background: var(--incomplete-c);
       color: white;
     }
     .mbtn-danger:hover { background: #d03e3e; }
 
     /* ── Delete modal warning ─────────────────────────────────────── */
     .delete-warning {
-      background: var(--blocked-bg);
+      background: var(--incomplete-bg);
       border: 1px solid #f9c0c0;
       border-radius: 11px;
       padding: 1.25rem 1.5rem;
     }
     .delete-warning p { font-size: 1rem; color: var(--text-2); line-height: 1.5; }
-    .delete-warning strong { color: var(--blocked-c); }
+    .delete-warning strong { color: var(--incomplete-c); }
     .delete-note { margin-top: .85rem; font-size: .86rem; color: var(--text-muted); }
 
-    /* ── Toast ────────────────────────────────────────────────────── */
-    #toast-container {
-      position: fixed;
-      bottom: 1.75rem; right: 1.75rem;
-      display: flex; flex-direction: column; gap: .6rem;
-      z-index: 9999; pointer-events: none;
-    }
-    .toast {
-      background: var(--text);
-      color: white;
-      border-radius: 10px;
-      padding: .8rem 1.25rem;
-      font-size: .95rem;
-      font-weight: 600;
-      opacity: 0;
-      transform: translateX(20px);
-      animation: tin .3s forwards, tout .3s 2.7s forwards;
-      max-width: 300px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.18);
-    }
-    .toast.error { background: var(--blocked-c); }
-    @keyframes tin  { to { opacity: 1; transform: translateX(0); } }
-    @keyframes tout { to { opacity: 0; transform: translateX(20px); } }
-
     @media (max-width: 640px) {
-      .sidebar { display: none; }
-      .main { margin-left: 0; }
       .form-row { grid-template-columns: 1fr; }
     }
-  </style>
-</head>
-<body>
-<div class="shell">
+{% endblock %}
 
-  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-mark">🌟</div>KUPPI
-    </div>
+{% block topbar %}
+  <div>
+    <div class="topbar-title">Room Management</div>
+    <div class="topbar-sub">Add, edit and configure rooms</div>
+  </div>
+  <button class="btn-add" onclick="openCreateModal()">+ Add Room</button>
+{% endblock %}
 
-    <div class="nav-section">
-      <div class="nav-label">Main</div>
-      <nav>
-        <a href="/dashboard"><span class="ico">📊</span> Dashboard</a>
-        <a href="/rooms" class="active"><span class="ico">🛏️</span> Rooms</a>
-      </nav>
-      <div class="nav-label">Manage</div>
-      <nav>
-        <a href="/staff"><span class="ico">👷</span> Staff</a>
-        <a href="/settings"><span class="ico">⚙️</span> Settings</a>
-      </nav>
-    </div>
-
-    <div class="sidebar-promo">
-      <strong>Housekeeping QA</strong>
-      <p>Real-time room tracking for supervisors</p>
-    </div>
-  </aside>
-
-  <!-- ── Main ─────────────────────────────────────────────────────── -->
-  <div class="main">
-
-    <header class="topbar">
-      <div>
-        <div class="topbar-title">Room Management</div>
-        <div class="topbar-sub">Add, edit and configure rooms</div>
-      </div>
-      <button class="btn-add" onclick="openCreateModal()">+ Add Room</button>
-    </header>
-
+{% block content %}
     <div class="content">
 
       <!-- Summary pills -->
@@ -621,9 +413,9 @@
       </div>
 
     </div>
-  </div>
-</div>
+{% endblock %}
 
+{% block modals %}
 <!-- ── Add / Edit Modal ──────────────────────────────────────────── -->
 <div class="modal-overlay" id="room-modal">
   <div class="modal">
@@ -699,9 +491,9 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<div id="toast-container"></div>
-
+{% block page_scripts %}
 <script>
   let rooms = [];
   let editingRoomId = null;
@@ -921,6 +713,4 @@
 
   loadRooms();
 </script>
-
-</body>
-</html>
+{% endblock %}

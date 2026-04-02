@@ -1,157 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KUPPI — Staff Management</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+{% extends "base.html" %}
 
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+{% block title %}Staff Management{% endblock %}
 
-    :root {
-      --bg:            #f0f2fb;
-      --sidebar-bg:    #ffffff;
-      --card-bg:       #ffffff;
-
-      --indigo:        #5B52E8;
-      --indigo-mid:    #7B74F0;
-      --indigo-light:  #edecfd;
-      --indigo-xlight: #f5f4ff;
-
-      --active-c:      #E8A020;
-      --active-bg:     #fff8ec;
-      --complete-c:    #22C07A;
-      --complete-bg:   #edfaf3;
-
-      --text:          #1a1a2e;
-      --text-2:        #4a4a6a;
-      --text-muted:    #9a9ab0;
-      --border:        #e4e6f0;
-      --border-light:  #f0f2f8;
-
-      --font-body: 'Nunito Sans', sans-serif;
-      --font-head: 'Barlow', sans-serif;
-      --radius: 14px;
-      --sidebar-w: 270px;
-    }
-
-    html, body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      font-size: 17px;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .shell { display: flex; min-height: 100vh; }
-
-    /* ── Sidebar ──────────────────────────────────────────────────── */
-    .sidebar {
-      width: var(--sidebar-w);
-      background: var(--sidebar-bg);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 2rem 1.25rem;
-      position: fixed;
-      top: 0; left: 0; bottom: 0;
-      z-index: 10;
-    }
-
-    .logo {
-      font-family: var(--font-head);
-      font-size: 1.9rem;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: .02em;
-      display: flex;
-      align-items: center;
-      gap: .75rem;
-      padding: .25rem .5rem;
-      margin-bottom: .75rem;
-    }
-    .logo-mark {
-      width: 40px; height: 40px;
-      background: var(--indigo);
-      border-radius: 11px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      color: white;
-      flex-shrink: 0;
-    }
-
-    .nav-section { margin-top: 1.75rem; }
-    .nav-label {
-      font-size: .75rem;
-      font-weight: 700;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 0 .85rem;
-      margin-bottom: .5rem;
-    }
-    nav a {
-      display: flex;
-      align-items: center;
-      gap: .8rem;
-      padding: .75rem .85rem;
-      border-radius: 10px;
-      text-decoration: none;
-      color: var(--text-2);
-      font-weight: 600;
-      font-size: 1rem;
-      transition: all .15s;
-      margin-bottom: 3px;
-    }
-    nav a .ico { font-size: 18px; width: 22px; text-align: center; opacity: .8; }
-    nav a:hover { background: var(--bg); color: var(--text); }
-    nav a.active { background: var(--indigo-light); color: var(--indigo); }
-    nav a.active .ico { opacity: 1; }
-
-    .sidebar-promo {
-      margin-top: auto;
-      background: linear-gradient(145deg, #5B52E8, #8B80F8);
-      border-radius: 14px;
-      padding: 1.35rem;
-      color: white;
-    }
-    .sidebar-promo strong {
-      font-family: var(--font-head);
-      font-size: 1.1rem;
-      font-weight: 700;
-      display: block;
-      margin-bottom: .4rem;
-    }
-    .sidebar-promo p { font-size: .88rem; opacity: .85; line-height: 1.5; }
-
-    /* ── Main ─────────────────────────────────────────────────────── */
-    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
-
-    /* ── Topbar ───────────────────────────────────────────────────── */
-    .topbar {
-      background: white;
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 2.5rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      position: sticky;
-      top: 0;
-      z-index: 9;
-    }
-    .topbar-title {
-      font-family: var(--font-head);
-      font-size: 1.5rem;
-      font-weight: 800;
-      letter-spacing: .01em;
-    }
-    .topbar-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
-
+{% block page_styles %}
     /* ── Section header ───────────────────────────────────────────── */
     .sec-head {
       display: flex;
@@ -291,51 +142,16 @@
       border-color: var(--indigo);
       box-shadow: 0 0 0 3px var(--indigo-light);
     }
+{% endblock %}
 
-    @media (max-width: 640px) {
-      .sidebar { display: none; }
-      .main { margin-left: 0; }
-    }
-  </style>
-</head>
-<body>
-<div class="shell">
+{% block topbar %}
+  <div>
+    <div class="topbar-title">Staff Management</div>
+    <div class="topbar-sub">Current housekeeping assignments</div>
+  </div>
+{% endblock %}
 
-  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
-  <aside class="sidebar">
-    <div class="logo">
-      <div class="logo-mark">🌟</div>KUPPI
-    </div>
-
-    <div class="nav-section">
-      <div class="nav-label">Main</div>
-      <nav>
-        <a href="/dashboard"><span class="ico">📊</span> Dashboard</a>
-        <a href="/rooms"><span class="ico">🛏️</span> Rooms</a>
-      </nav>
-      <div class="nav-label">Manage</div>
-      <nav>
-        <a href="/staff" class="active"><span class="ico">👷</span> Staff</a>
-        <a href="/settings"><span class="ico">⚙️</span> Settings</a>
-      </nav>
-    </div>
-
-    <div class="sidebar-promo">
-      <strong>Housekeeping QA</strong>
-      <p>Real-time room tracking for supervisors</p>
-    </div>
-  </aside>
-
-  <!-- ── Main ─────────────────────────────────────────────────────── -->
-  <div class="main">
-
-    <header class="topbar">
-      <div>
-        <div class="topbar-title">Staff Management</div>
-        <div class="topbar-sub">Current housekeeping assignments</div>
-      </div>
-    </header>
-
+{% block content %}
     <!-- Section header -->
     <div class="sec-head">
       <h2>Active Staff</h2>
@@ -450,9 +266,9 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
+{% endblock %}
 
+{% block page_scripts %}
 <script>
   const LANGUAGE_MAP = {
     en: 'English',
@@ -561,6 +377,4 @@
   `;
   document.head.appendChild(style);
 </script>
-
-</body>
-</html>
+{% endblock %}

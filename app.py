@@ -765,25 +765,26 @@ def dashboard():
         "dashboard.html",
         supabase_url=SUPABASE_URL,
         supabase_key=SUPABASE_KEY,
+        active_page="dashboard",
     )
 
 
 @app.route("/rooms")
 def rooms():
     """Serve the room management page."""
-    return render_template("rooms.html")
+    return render_template("rooms.html", active_page="rooms")
 
 
 @app.route("/staff")
 def staff():
     """Serve the staff management page."""
-    return render_template("staff.html")
+    return render_template("staff.html", active_page="staff")
 
 
 @app.route("/settings")
 def settings():
     """Serve the settings page."""
-    return render_template("settings.html")
+    return render_template("settings.html", active_page="settings")
 
 
 @app.route("/test123")
