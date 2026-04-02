@@ -416,6 +416,7 @@ def api_status():
             "scanned":     sorted(scanned_set),
             "missing":     missing,
             "start_time":  session.get("start_time"),
+            "end_time":    session.get("end_time"),
         })
 
     _log("API_STATUS", f"{len(result)} rooms returned")
@@ -666,41 +667,94 @@ def resolve_unknown_scan(scan_id):
         return jsonify({"error": "Failed to resolve unknown scan"}), 500
 
 
-# ---------------------------------------------------------------------------
-# Staff API endpoints
-# ---------------------------------------------------------------------------
-
-@app.route("/api/staff/<staff_id>", methods=["GET"])
-def get_staff(staff_id):
+@app.route("/api/set-staff-language", methods=["POST"])
+def set_staff_language():
     """
-    Lookup staff member by staff_id.
-
-    Response:
+    Set the device language for a staff member.
+    
+    Expected JSON body:
         {
-            "staff_id": "1001",
-            "name": "John Smith",
-            "role": "Housekeeping",
-            "start_date": "2024-01-15",
-            "status": "active"
-        }
-
-    Error response:
-        {
-            "error": "Staff ID not found"
+            "staff_id": "EMP-001",
+            "language_code": "en",  (en, zh, ta, bn, my, th, vi, tl)
+            "language_name": "English"
         }
     """
     try:
-        resp = supabase.table("staff").select("*").eq("staff_id", staff_id).execute()
-        if not resp.data:
-            _log("API_STAFF_NOT_FOUND", f"staff_id={staff_id}")
-            return jsonify({"error": "Staff ID not found"}), 404
-
-        staff = resp.data[0]
-        _log("API_STAFF_LOOKUP", f"staff_id={staff_id} name={staff.get('name')}")
-        return jsonify(staff), 200
+        data = request.get_json()
+        staff_id = data.get("staff_id")
+        language_code = data.get("language_code")
+        language_name = data.get("language_name")
+        
+        if not all([staff_id, language_code, language_name]):
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Validate language code
+        valid_languages = ["en", "zh", "ta", "bn", "my", "th", "vi", "tl"]
+        if language_code not in valid_languages:
+            return jsonify({"error": f"Invalid language code: {language_code}"}), 400
+        
+        # In a real system, you would:
+        # 1. Broadcast this language setting to the KUPPI device assigned to this staff
+        # 2. Store the preference in a database
+        # For now, we'll just log it
+        
+        _log("STAFF_LANG", f"Staff {staff_id} language set to {language_code} ({language_name})")
+        
+        return jsonify({
+            "success": True,
+            "staff_id": staff_id,
+            "language": language_name,
+            "language_code": language_code
+        }), 200
+        
     except Exception as e:
-        _log("API_STAFF_ERROR", f"Failed to lookup staff: {e}")
-        return jsonify({"error": "Failed to lookup staff"}), 500
+        _log("STAFF_LANG_ERROR", f"Failed to set staff language: {e}")
+        return jsonify({"error": "Failed to set staff language"}), 500
+
+
+@app.route("/api/recent-sessions")
+def recent_sessions():
+    """
+    Get the most recent completed session for each room.
+    Returns a dict keyed by room_id with session info including staff and duration.
+    """
+    try:
+        # Fetch all completed sessions ordered by room and end_time
+        resp = supabase.table("sessions").select("*").eq("status", "complete").order("room", desc=False).order("end_time", desc=True).execute()
+        
+        sessions_by_room = {}
+        for session in (resp.data or []):
+            room_id = session.get("room")
+            
+            # Only keep the first (most recent) session per room
+            if room_id not in sessions_by_room:
+                start_time = session.get("start_time")
+                end_time = session.get("end_time")
+                
+                # Calculate duration in minutes
+                duration_minutes = None
+                if start_time and end_time:
+                    from datetime import datetime as dt
+                    try:
+                        start = dt.fromisoformat(start_time.replace('Z', '+00:00'))
+                        end = dt.fromisoformat(end_time.replace('Z', '+00:00'))
+                        duration_minutes = (end - start).total_seconds() / 60
+                    except Exception as e:
+                        _log("SESSION_TIME_ERROR", f"Failed to parse timestamps: {e}")
+                
+                sessions_by_room[room_id] = {
+                    "id": session.get("id"),
+                    "card_uid": session.get("card_uid"),
+                    "room": room_id,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "duration_minutes": duration_minutes
+                }
+        
+        return jsonify(sessions_by_room), 200
+    except Exception as e:
+        _log("API_SESSIONS_ERROR", f"Failed to fetch sessions: {e}")
+        return jsonify({"error": "Failed to fetch sessions"}), 500
 
 
 @app.route("/dashboard")
@@ -712,6 +766,165 @@ def dashboard():
         supabase_url=SUPABASE_URL,
         supabase_key=SUPABASE_KEY,
     )
+
+
+@app.route("/rooms")
+def rooms():
+    """Serve the room management page."""
+    return render_template("rooms.html")
+
+
+@app.route("/staff")
+def staff():
+    """Serve the staff management page."""
+    return render_template("staff.html")
+
+
+@app.route("/settings")
+def settings():
+    """Serve the settings page."""
+    return render_template("settings.html")
+
+
+@app.route("/test123")
+def test123():
+    """Test route."""
+    return jsonify({"message": "Test route works!"})
+
+
+@app.route("/api/populate-test-data", methods=["POST"])
+def populate_test_data():
+    """
+    Development endpoint: Create fake test data for dashboard visualization.
+    Creates 6 test rooms with sessions and scans at various completion levels.
+    """
+    try:
+        import uuid
+        from datetime import datetime as dt, timedelta
+        
+        # Test data structure
+        test_data = [
+            {
+                "room": "302",
+                "card_uid": "FAKE-MARIA",
+                "status": "complete",
+                "hours_ago": 2.5,
+                "duration_hours": 0.3,  # 18 minutes
+                "scans": ZONES
+            },
+            {
+                "room": "303",
+                "card_uid": "FAKE-JAMES",
+                "status": "complete",
+                "hours_ago": 1.75,
+                "duration_hours": 0.37,  # 22 minutes
+                "scans": ZONES
+            },
+            {
+                "room": "304",
+                "card_uid": "FAKE-ANA",
+                "status": "incomplete",
+                "minutes_ago": 18,
+                "scans": ["Toilet", "Wardrobe", "Bed"]
+            },
+            {
+                "room": "305",
+                "card_uid": "FAKE-DAVID",
+                "status": "active",
+                "minutes_ago": 5,
+                "scans": ["Toilet"]
+            },
+            {
+                "room": "401",
+                "card_uid": "FAKE-CARLOS",
+                "status": "complete",
+                "hours_ago": 3,
+                "duration_hours": 0.5,  # 30 minutes
+                "scans": ZONES
+            },
+            {
+                "room": "402",
+                "card_uid": "FAKE-SOFIA",
+                "status": "incomplete",
+                "minutes_ago": 8,
+                "scans": ["Wardrobe", "Study Desk"]
+            },
+        ]
+        
+        now = dt.now(timezone.utc)
+        created_count = 0
+        
+        for room_data in test_data:
+            try:
+                room_num = room_data["room"]
+                
+                # Create or get room
+                try:
+                    supabase.table("rooms").insert({
+                        "room_number": room_num,
+                        "floor": str(int(room_num) // 100),
+                        "room_type": "Standard" if int(room_num) < 400 else "Suite",
+                        "status": "available",
+                        "nfc_uid": f"NFC-{room_num}"
+                    }).execute()
+                except:
+                    pass  # Room already exists
+                
+                # Calculate start/end times
+                if "hours_ago" in room_data:
+                    start_time = now - timedelta(hours=room_data["hours_ago"])
+                    if "duration_hours" in room_data:
+                        end_time = start_time + timedelta(hours=room_data["duration_hours"])
+                    else:
+                        end_time = None
+                else:
+                    start_time = now - timedelta(minutes=room_data.get("minutes_ago", 5))
+                    end_time = None
+                
+                # Create session
+                session_data = {
+                    "card_uid": room_data["card_uid"],
+                    "room": room_num,
+                    "start_time": start_time.isoformat(),
+                    "status": room_data["status"],
+                }
+                if end_time:
+                    session_data["end_time"] = end_time.isoformat()
+                
+                session_resp = supabase.table("sessions").insert(session_data).execute()
+                if not session_resp.data:
+                    continue
+                
+                session_id = session_resp.data[0]["id"]
+                
+                # Create scans
+                for i, zone in enumerate(room_data["scans"]):
+                    try:
+                        supabase.table("scans").insert({
+                            "session_id": session_id,
+                            "tag_uid": f"NFC-ZONE-{i}",
+                            "area": zone
+                        }).execute()
+                    except Exception as e:
+                        _log("TEST_DATA_SCAN_ERROR", f"Failed to create scan: {e}")
+                
+                created_count += 1
+                
+            except Exception as e:
+                _log("TEST_DATA_ROOM_ERROR", f"Failed to create room data: {e}")
+                continue
+        
+        _log("TEST_DATA", f"Created {created_count} test rooms with sessions")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Created test data for {created_count} rooms",
+            "rooms_created": created_count
+        }), 200
+        
+    except Exception as e:
+        _log("TEST_DATA_ERROR", f"Failed to populate test data: {str(e)}")
+        return jsonify({"error": str(e), "type": type(e).__name__}), 500
 
 
 # ---------------------------------------------------------------------------

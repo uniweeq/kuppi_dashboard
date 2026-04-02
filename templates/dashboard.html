@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KUPPI — Housekeeping Dashboard</title>
-
-  <!-- Supabase JS client (loaded from CDN) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap"
+    rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <!-- Font Awesome for icons -->
@@ -15,1513 +18,1299 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
-    /* ── Reset & base ─────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:           #0A0F2C;
-      --bg-gradient:  linear-gradient(135deg, #0A0F2C 0%, #1a1f3a 100%);
-      --surface:      #121836;
-      --surface-2:    #1a2248;
-      --surface-3:    #222d50;
-      --border:       #243060;
-      --text:         #e8eaf6;
-      --text-muted:   #8892b0;
-
-      --primary:      #5e72e4;
-      --primary-light:#8091ed;
-      --pending:      #607d8b;
-      --active:       #ffa000;
-      --complete:     #2e7d32;
-      --incomplete:   #c62828;
-
-      --pending-bg:   rgba(96,125,139,.15);
-      --active-bg:    rgba(255,160,0,.15);
-      --complete-bg:  rgba(46,125,50,.15);
-      --incomplete-bg:rgba(198,40,40,.15);
-
-      --tick:         #66bb6a;
-      --cross:        #ef5350;
-      --bar-track:    #243060;
-
-      --shadow-sm:    0 2px 8px rgba(0,0,0,.2);
-      --shadow-md:    0 4px 16px rgba(0,0,0,.3);
-      --shadow-lg:    0 8px 32px rgba(0,0,0,.4);
-
-      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --radius: 12px;
-      --gap: 1.25rem;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
+    :root {
+      --bg: #f0f2fb;
+      --sidebar-bg: #ffffff;
+      --card-bg: #ffffff;
+
+      --indigo: #5B52E8;
+      --indigo-mid: #7B74F0;
+      --indigo-light: #edecfd;
+      --indigo-xlight: #f5f4ff;
+
+      --pending-c: #9BAAB8;
+      --pending-bg: #f3f6f9;
+      --active-c: #E8A020;
+      --active-bg: #fff8ec;
+      --complete-c: #22C07A;
+      --complete-bg: #edfaf3;
+      --incomplete-c: #E85252;
+      --incomplete-bg: #fff0f0;
+
+      --text: #1a1a2e;
+      --text-2: #4a4a6a;
+      --text-muted: #9a9ab0;
+      --border: #e4e6f0;
+      --border-light: #f0f2f8;
+
+      --font-body: 'Nunito Sans', sans-serif;
+      --font-head: 'Barlow', sans-serif;
+      --radius: 14px;
+      --sidebar-w: 270px;
+    }
+
+    html,
+    body {
       background: var(--bg);
       background: var(--bg-gradient);
       color: var(--text);
-      font-family: var(--font);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      display: flex;
       min-height: 100vh;
     }
 
-    /* ── Navigation Menu ───────────────────────────────────────────────────── */
-    nav {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 2rem;
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
       display: flex;
-      align-items: center;
-      gap: 2rem;
-      box-shadow: var(--shadow-sm);
-    }
-    nav a {
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 1.25rem 1rem;
-      border-bottom: 3px solid transparent;
-      transition: var(--transition);
-      font-weight: 500;
-      font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    nav a:hover {
-      color: var(--text);
-      border-bottom-color: var(--primary-light);
-    }
-    nav a.active {
-      color: var(--primary-light);
-      border-bottom-color: var(--primary);
-    }
-    nav a i {
-      font-size: 1rem;
+      flex-direction: column;
+      padding: 2rem 1.25rem;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 10;
     }
 
-    /* ── Header ───────────────────────────────────────────────────────────── */
-    header {
-      background: var(--surface);
+    .logo {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: .02em;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .25rem .5rem;
+      margin-bottom: .75rem;
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: var(--indigo);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .logo em {
+      color: var(--indigo);
+      font-style: normal;
+    }
+
+    .nav-section {
+      margin-top: 1.75rem;
+    }
+
+    .nav-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 .85rem;
+      margin-bottom: .5rem;
+    }
+
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .75rem .85rem;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all .15s;
+      margin-bottom: 3px;
+    }
+
+    nav a .ico {
+      font-size: 18px;
+      width: 22px;
+      text-align: center;
+      opacity: .8;
+    }
+
+    nav a:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    nav a.active {
+      background: var(--indigo-light);
+      color: var(--indigo);
+    }
+
+    nav a.active .ico {
+      opacity: 1;
+    }
+
+    .sidebar-promo {
+      margin-top: auto;
+      background: linear-gradient(145deg, #5B52E8, #8B80F8);
+      border-radius: 14px;
+      padding: 1.35rem;
+      color: white;
+    }
+
+    .sidebar-promo strong {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: block;
+      margin-bottom: .4rem;
+    }
+
+    .sidebar-promo p {
+      font-size: .88rem;
+      opacity: .85;
+      line-height: 1.5;
+    }
+
+    /* ── Main ─────────────────────────────────────────────────────── */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Topbar ───────────────────────────────────────────────────── */
+    .topbar {
+      background: white;
       border-bottom: 1px solid var(--border);
-      padding: 1.5rem 2rem;
+      padding: 1.25rem 2.5rem;
       display: flex;
       align-items: center;
       gap: 1rem;
-      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 9;
     }
-    header .logo {
-      font-size: 1.8rem;
+
+    .topbar-title {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
       font-weight: 800;
-      letter-spacing: .04em;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--active) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      letter-spacing: .01em;
     }
-    header .logo span {
-      color: var(--active);
+
+    .topbar-sub {
+      font-size: .9rem;
+      color: var(--text-muted);
+      margin-top: 2px;
     }
-    header .subtitle { color: var(--text-muted); font-size: .95rem; }
-    header .live-badge {
+
+    .live-pill {
       margin-left: auto;
       display: flex;
       align-items: center;
       gap: .5rem;
-      color: var(--tick);
-      font-size: .85rem;
-      font-weight: 600;
-      background: rgba(102, 187, 106, 0.1);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-    }
-    header .live-badge .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--tick);
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
-    }
-
-    /* ── Stats bar ────────────────────────────────────────────────────────── */
-    .stats-bar {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-      padding: 1.5rem 2rem;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-    .stat-chip {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      padding: 1.25rem;
-      background: var(--surface-2);
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      transition: var(--transition);
-    }
-    .stat-chip:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-    }
-    .stat-chip .stat-header {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .stat-chip .stat-header i {
-      font-size: 1rem;
-    }
-    .stat-chip .count {
+      font-size: .88rem;
       font-weight: 700;
-      font-size: 2rem;
-      line-height: 1;
-    }
-    .stat-chip.pending .count { color: var(--pending); }
-    .stat-chip.active .count { color: var(--active); }
-    .stat-chip.complete .count { color: var(--tick); }
-    .stat-chip.incomplete .count { color: var(--cross); }
-    .stat-chip.info .count { color: var(--primary); }
-    .stat-chip .stat-detail {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 0.25rem;
+      letter-spacing: .06em;
+      color: var(--complete-c);
+      background: var(--complete-bg);
+      border: 1px solid #b6efd5;
+      padding: .45rem 1rem;
+      border-radius: 999px;
     }
 
-    /* ── Main grid ────────────────────────────────────────────────────────── */
-    .container {
-      display: flex;
-      gap: 2rem;
-      padding: 2rem;
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--complete-c);
+      animation: blink 1.6s infinite;
     }
-    .main-content {
-      flex: 1;
-      min-width: 0;
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .25
+      }
     }
-    main {
+
+    /* ── Stat cards ───────────────────────────────────────────────── */
+    .stats-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: var(--gap);
-    }
-    @media (max-width: 1400px) {
-      main { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 900px) {
-      .container { flex-direction: column; }
-      main { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 560px) {
-      .container { padding: 1rem; }
+      gap: 1.25rem;
+      padding: 2rem 2.5rem 0;
     }
 
-    /* ── Control Bar ──────────────────────────────────────────────────────── */
-    .control-bar {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .search-box {
-      flex: 1;
-      min-width: 200px;
-      position: relative;
-    }
-    .search-box input {
-      width: 100%;
-      padding: 0.75rem 1rem 0.75rem 2.5rem;
-      background: var(--surface-2);
+    .stat-card {
+      background: white;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      color: var(--text);
-      font-family: var(--font);
-      transition: var(--transition);
-    }
-    .search-box input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
-    }
-    .search-box i {
-      position: absolute;
-      left: 0.9rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-    }
-    .filter-buttons {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .filter-btn {
-      padding: 0.65rem 1rem;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      color: var(--text-muted);
-      font-family: var(--font);
-      font-size: 0.85rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition);
+      padding: 1.4rem 1.6rem;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
-    }
-    .filter-btn:hover {
-      background: var(--surface-3);
-      color: var(--text);
-    }
-    .filter-btn.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
+      gap: 1.1rem;
     }
 
-    /* ── Room tile ────────────────────────────────────────────────────────── */
-    .room-tile {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
+    .stat-card[role="button"] {
+      transition: all .2s;
+    }
+
+    .stat-card[role="button"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(91, 82, 232, .1);
+      border-color: var(--indigo);
+    }
+
+    .stat-card.active-filter {
+      border: 2px solid var(--indigo);
+      background: var(--indigo-xlight);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
       display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      transition: var(--transition);
-      box-shadow: var(--shadow-sm);
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-    }
-    .room-tile::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 4px;
-      height: 100%;
-      transition: var(--transition);
-    }
-    .room-tile:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: var(--shadow-lg);
-      border-color: var(--primary-light);
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
     }
 
-    /* status-specific left border accent */
-    .room-tile[data-status="pending"]::before { background: var(--pending); }
-    .room-tile[data-status="active"]::before { background: var(--active); }
-    .room-tile[data-status="complete"]::before { background: var(--complete); }
-    .room-tile[data-status="incomplete"]::before { background: var(--incomplete); }
+    .stat-card.pending .stat-icon {
+      background: var(--pending-bg);
+    }
 
-    .room-tile[data-status="active"] {
+    .stat-card.active .stat-icon {
       background: var(--active-bg);
-      animation: subtle-pulse 2s infinite;
-    }
-    .room-tile[data-status="complete"] { background: var(--complete-bg); }
-    .room-tile[data-status="incomplete"] { background: var(--incomplete-bg); }
-
-    @keyframes subtle-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.95; }
     }
 
-    /* tile header row */
-    .tile-header {
+    .stat-card.complete .stat-icon {
+      background: var(--complete-bg);
+    }
+
+    .stat-card.incomplete .stat-icon {
+      background: var(--incomplete-bg);
+    }
+
+    .stat-num {
+      font-family: var(--font-head);
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.01em;
+    }
+
+    .stat-lbl {
+      font-size: .88rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .stat-card.pending .stat-num {
+      color: var(--pending-c);
+    }
+
+    .stat-card.active .stat-num {
+      color: var(--active-c);
+    }
+
+    .stat-card.complete .stat-num {
+      color: var(--complete-c);
+    }
+
+    .stat-card.incomplete .stat-num {
+      color: var(--incomplete-c);
+    }
+
+    /* ── Section header ───────────────────────────────────────────── */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      padding: 2rem 2.5rem 1rem;
+    }
+
+    .sec-head h2 {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+
+    .sec-badge {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: white;
+      border: 1px solid var(--border);
+      padding: .3rem .85rem;
+      border-radius: 999px;
+    }
+
+    /* ── Room grid ────────────────────────────────────────────────── */
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      padding: 0 2.5rem 2.5rem;
+    }
+
+    @media (max-width: 1200px) {
+      .room-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 750px) {
+      .room-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Room card ────────────────────────────────────────────────── */
+    .room-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+      animation: rise .3s ease both;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .room-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(91, 82, 232, .1);
+    }
+
+    .card-accent {
+      height: 4px;
+    }
+
+    [data-status="pending"] .card-accent {
+      background: var(--pending-c);
+    }
+
+    [data-status="active"] .card-accent {
+      background: var(--active-c);
+    }
+
+    [data-status="complete"] .card-accent {
+      background: var(--complete-c);
+    }
+
+    [data-status="incomplete"] .card-accent {
+      background: var(--incomplete-c);
+    }
+
+    .card-inner {
+      padding: 1.4rem 1.5rem;
+    }
+
+    .card-row1 {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+    }
+
+    .room-num {
+      font-family: var(--font-head);
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: .01em;
+    }
+
+    .room-sub {
+      font-size: .88rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      font-weight: 600;
+    }
+
+    .status-tag {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      padding: .35rem .85rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    [data-status="pending"] .status-tag {
+      background: var(--pending-bg);
+      color: var(--pending-c);
+    }
+
+    [data-status="active"] .status-tag {
+      background: var(--active-bg);
+      color: var(--active-c);
+    }
+
+    [data-status="complete"] .status-tag {
+      background: var(--complete-bg);
+      color: var(--complete-c);
+    }
+
+    [data-status="incomplete"] .status-tag {
+      background: var(--incomplete-bg);
+      color: var(--incomplete-c);
+    }
+
+    /* progress */
+    .prog {
+      margin-bottom: 1.2rem;
+    }
+
+    .prog-top {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: .45rem;
+      font-size: .86rem;
+    }
+
+    .prog-top .pl {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .prog-top .pn {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--text);
+    }
+
+    .prog-track {
+      height: 8px;
+      background: var(--border-light);
+      border-radius: 999px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .prog-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .5s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    [data-status="pending"] .prog-fill {
+      background: var(--pending-c);
+    }
+
+    [data-status="active"] .prog-fill {
+      background: var(--active-c);
+    }
+
+    [data-status="complete"] .prog-fill {
+      background: var(--complete-c);
+    }
+
+    [data-status="incomplete"] .prog-fill {
+      background: var(--incomplete-c);
+    }
+
+    /* zone checklist */
+    .zones-heading {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .7rem;
+    }
+
+    .zones-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .4rem;
+    }
+
+    .zone-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .55rem .7rem;
+      border-radius: 8px;
+      font-size: .92rem;
+      font-weight: 600;
+    }
+
+    .zone-item.done {
+      background: var(--complete-bg);
+      color: #15a062;
+    }
+
+    .zone-item.miss {
+      background: var(--border-light);
+      color: var(--text-muted);
+    }
+
+    .zone-tick {
+      width: 20px;
+      height: 20px;
+      border-radius: 5px;
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+
+    .zone-item.done .zone-tick {
+      background: var(--complete-c);
+      color: white;
+    }
+
+    .zone-item.miss .zone-tick {
+      background: var(--border);
+      color: var(--text-muted);
+    }
+
+    .zone-name {
+      font-size: .9rem;
+    }
+
+    /* card footer */
+    .card-foot {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding: .85rem 1.5rem;
+      border-top: 1px solid var(--border-light);
+      font-size: .86rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      background: var(--indigo-xlight);
     }
-    .room-number {
+
+    .cf-count {
+      color: var(--text-2);
+      font-weight: 700;
+    }
+
+    /* empty */
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 5rem 2rem;
+      color: var(--text-muted);
+      font-size: 1rem;
+    }
+
+    /* modal */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, .4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: background .2s;
+    }
+
+    .modal-close:hover {
+      background: var(--border-light);
+    }
+
+    .modal-section {
+      margin-bottom: 2rem;
+    }
+
+    .modal-section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .8rem;
+    }
+
+    .modal-status-line {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .modal-stat {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+    }
+
+    .modal-stat-val {
+      font-family: var(--font-head);
       font-size: 1.8rem;
       font-weight: 800;
       line-height: 1;
     }
 
-    /* status badge */
-    .status-badge {
-      font-size: .72rem;
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      padding: .25rem .65rem;
-      border-radius: 999px;
-    }
-    .status-badge.pending    { background: var(--pending-bg);    color: var(--pending); }
-    .status-badge.active     { background: var(--active-bg);     color: var(--active); }
-    .status-badge.complete   { background: var(--complete-bg);   color: var(--tick); }
-    .status-badge.incomplete { background: var(--incomplete-bg); color: var(--cross); }
-
-    /* progress bar */
-    .progress-wrap { display: flex; flex-direction: column; gap: .4rem; }
-    .progress-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: .85rem;
+    .modal-stat-lbl {
+      font-size: .8rem;
       color: var(--text-muted);
-      font-weight: 500;
+      font-weight: 600;
     }
-    .progress-track {
-      height: 8px;
-      border-radius: 999px;
-      background: var(--bar-track);
-      overflow: hidden;
-      position: relative;
-    }
-    .progress-fill {
-      height: 100%;
-      border-radius: 999px;
-      transition: width .6s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    .progress-fill::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      right: 0;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255,255,255,0.2),
-        transparent
-      );
-      animation: shimmer 2s infinite;
-    }
-    @keyframes shimmer {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
-    [data-status="pending"]    .progress-fill { background: var(--pending); }
-    [data-status="active"]     .progress-fill { background: linear-gradient(90deg, var(--active), var(--primary)); }
-    [data-status="complete"]   .progress-fill { background: linear-gradient(90deg, var(--tick), var(--complete)); }
-    [data-status="incomplete"] .progress-fill { background: var(--cross); }
 
-    /* zone lists */
-    .zones-grid {
+    .modal-zone-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: .4rem .6rem;
-      font-size: .82rem;
+      gap: .6rem;
     }
-    .zone-item {
+
+    .modal-zone-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .75rem;
+      border-radius: 10px;
+      font-size: .95rem;
+      font-weight: 600;
+    }
+
+    .modal-zone-item.done {
+      background: var(--complete-bg);
+      color: var(--complete-c);
+    }
+
+    .modal-zone-item.miss {
+      background: var(--border-light);
+      color: var(--text-muted);
+    }
+
+    .modal-zone-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .modal-time {
+      font-size: .9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .modal-zone-detail {
+      margin-bottom: 1.2rem;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+    }
+
+    .modal-zone-detail-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .8rem;
+      font-weight: 700;
+      font-size: .95rem;
+    }
+
+    .modal-zone-detail-header .zone-check {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .modal-zone-detail-header.done {
+      color: var(--complete-c);
+    }
+
+    .modal-zone-detail-header.miss {
+      color: var(--text-muted);
+    }
+
+    .modal-items-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem;
+      font-size: .85rem;
+    }
+
+    .modal-item {
       display: flex;
       align-items: center;
       gap: .4rem;
-      padding: 0.3rem 0;
-    }
-    .zone-item.done  {
-      color: var(--tick);
-    }
-    .zone-item.miss  {
+      padding: .4rem .6rem;
+      border-radius: 6px;
+      background: var(--border-light);
       color: var(--text-muted);
-      opacity: 0.7;
     }
-    .zone-icon {
+
+    .modal-item.checked {
+      background: var(--complete-bg);
+      color: var(--complete-c);
+    }
+
+    .modal-item-icon {
       font-size: 1rem;
       flex-shrink: 0;
-      width: 18px;
-      text-align: center;
     }
 
-    /* start time */
-    .start-time {
-      font-size: .75rem;
-      color: var(--text-muted);
-      margin-top: .1rem;
-    }
-
-    /* ── Empty state ──────────────────────────────────────────────────────── */
-    #empty-state {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 4rem 2rem;
-      color: var(--text-muted);
-    }
-    #empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
-    #empty-state p { font-size: 1rem; }
-
-    /* ── Toast notification ───────────────────────────────────────────────── */
+    /* toast */
     #toast-container {
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
+      bottom: 1.75rem;
+      right: 1.75rem;
       display: flex;
       flex-direction: column;
-      gap: .5rem;
+      gap: .6rem;
       z-index: 9999;
       pointer-events: none;
     }
+
     .toast {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: .8rem 1.2rem;
-      font-size: .85rem;
-      color: var(--text);
+      background: var(--text);
+      color: white;
+      border-radius: 10px;
+      padding: .8rem 1.25rem;
+      font-size: .95rem;
+      font-weight: 600;
       opacity: 0;
       transform: translateX(20px);
-      animation: toast-in .3s forwards, toast-out .3s 3.7s forwards;
-      max-width: 320px;
-      box-shadow: var(--shadow-md);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .toast i {
-      font-size: 1rem;
-      color: var(--primary);
-    }
-    @keyframes toast-in  { to { opacity: 1; transform: translateX(0); } }
-    @keyframes toast-out { to { opacity: 0; transform: translateX(20px); } }
-
-    /* ── Sidebar Panels ──────────────────────────────────────────────────── */
-    .sidebar {
-      width: 350px;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-    }
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-    }
-    .panel-header {
-      padding: 1.25rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface-2);
-    }
-    .panel-title {
-      font-size: 1rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .panel-title i {
-      color: var(--primary);
-      font-size: 1.1rem;
-    }
-    .panel-body {
-      padding: 1rem;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .panel-body::-webkit-scrollbar {
-      width: 6px;
-    }
-    .panel-body::-webkit-scrollbar-track {
-      background: var(--surface-2);
-    }
-    .panel-body::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 3px;
-    }
-    .panel-body::-webkit-scrollbar-thumb:hover {
-      background: var(--primary);
+      animation: tin .3s forwards, tout .3s 3.7s forwards;
+      max-width: 300px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
     }
 
-    /* Activity feed */
-    .activity-item {
-      padding: 0.85rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-start;
-      transition: var(--transition);
-    }
-    .activity-item:last-child {
-      border-bottom: none;
-    }
-    .activity-item:hover {
-      background: var(--surface-2);
-    }
-    .activity-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 0.9rem;
-    }
-    .activity-icon.scan {
-      background: rgba(94, 114, 228, 0.15);
-      color: var(--primary);
-    }
-    .activity-icon.session {
-      background: rgba(255, 160, 0, 0.15);
-      color: var(--active);
-    }
-    .activity-icon.complete {
-      background: rgba(46, 125, 50, 0.15);
-      color: var(--tick);
-    }
-    .activity-content {
-      flex: 1;
-      font-size: 0.85rem;
-    }
-    .activity-content .activity-text {
-      color: var(--text);
-      margin-bottom: 0.25rem;
-    }
-    .activity-content .activity-time {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-    }
-
-    /* Staff performance */
-    .staff-item {
-      padding: 1rem;
-      background: var(--surface-2);
-      border-radius: 8px;
-      margin-bottom: 0.75rem;
-      border: 1px solid var(--border);
-      transition: var(--transition);
-    }
-    .staff-item:hover {
-      background: var(--surface-3);
-      transform: translateX(2px);
-    }
-    .staff-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.75rem;
-    }
-    .staff-name {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--text);
-    }
-    .staff-status {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.65rem;
-      border-radius: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .staff-status.active {
-      background: var(--active-bg);
-      color: var(--active);
-    }
-    .staff-status.idle {
-      background: var(--pending-bg);
-      color: var(--pending);
-    }
-    .staff-details {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-    }
-    .staff-progress {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.8rem;
-    }
-    .staff-progress-bar {
-      flex: 1;
-      height: 4px;
-      background: var(--bar-track);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .staff-progress-fill {
-      height: 100%;
-      background: var(--active);
-      transition: width 0.5s ease;
-    }
-
-    /* Notifications/Alerts */
-    .alert-item {
-      padding: 1rem;
-      background: var(--surface-2);
-      border-left: 3px solid;
-      margin-bottom: 0.75rem;
-      border-radius: 4px;
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-start;
-    }
-    .alert-item.warning {
-      border-left-color: var(--active);
-      background: rgba(255, 160, 0, 0.08);
-    }
-    .alert-item.error {
-      border-left-color: var(--cross);
-      background: rgba(239, 83, 80, 0.08);
-    }
-    .alert-item.info {
-      border-left-color: var(--primary);
-      background: rgba(94, 114, 228, 0.08);
-    }
-    .alert-icon {
-      font-size: 1.2rem;
-    }
-    .alert-item.warning .alert-icon {
-      color: var(--active);
-    }
-    .alert-item.error .alert-icon {
-      color: var(--cross);
-    }
-    .alert-item.info .alert-icon {
-      color: var(--primary);
-    }
-    .alert-content {
-      flex: 1;
-    }
-    .alert-title {
-      font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 0.25rem;
-    }
-    .alert-message {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    .alert-time {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: 0.25rem;
-    }
-
-    /* Room Details Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 10000;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-      backdrop-filter: blur(4px);
-    }
-    .modal.active {
-      display: flex;
-      animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .modal-content {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-lg);
-      width: 100%;
-      max-width: 700px;
-      max-height: 85vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      animation: slideUp 0.3s ease;
-    }
-    @keyframes slideUp {
-      from {
-        transform: translateY(50px);
-        opacity: 0;
-      }
+    @keyframes tin {
       to {
-        transform: translateY(0);
         opacity: 1;
+        transform: translateX(0);
       }
     }
-    .modal-header {
-      padding: 1.5rem 2rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface-2);
+
+    @keyframes tout {
+      to {
+        opacity: 0;
+        transform: translateX(20px);
+      }
     }
-    .modal-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0.25rem;
-      transition: var(--transition);
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-    }
-    .modal-close:hover {
-      color: var(--text);
-      background: var(--surface-3);
-    }
-    .modal-body {
-      padding: 2rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-    .modal-body::-webkit-scrollbar {
-      width: 8px;
-    }
-    .modal-body::-webkit-scrollbar-track {
-      background: var(--surface-2);
-    }
-    .modal-body::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 4px;
-    }
-    .modal-section {
-      margin-bottom: 2rem;
-    }
-    .modal-section:last-child {
-      margin-bottom: 0;
-    }
-    .modal-section-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .modal-section-title i {
-      color: var(--primary);
-    }
-    .scan-history-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.85rem;
-      background: var(--surface-2);
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-      border: 1px solid var(--border);
-    }
-    .scan-history-icon {
-      font-size: 1.5rem;
-    }
-    .scan-history-details {
-      flex: 1;
-    }
-    .scan-history-area {
-      font-weight: 600;
-      font-size: 0.95rem;
-      margin-bottom: 0.25rem;
-    }
-    .scan-history-time {
-      font-size: 0.8rem;
-      color: var(--text-muted);
+
+    @media (max-width: 640px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        margin-left: 0;
+      }
     }
   </style>
 </head>
+
 <body>
+  <div class="shell">
 
-<nav>
-  <a href="/dashboard" class="active">
-    <i class="fas fa-chart-line"></i>
-    Dashboard
-  </a>
-  <a href="/rooms">
-    <i class="fas fa-door-open"></i>
-    Rooms
-  </a>
-  <a href="#staff" onclick="alert('Staff Performance page coming soon!'); return false;">
-    <i class="fas fa-users"></i>
-    Staff Performance
-  </a>
-  <a href="#analytics" onclick="alert('Analytics page coming soon!'); return false;">
-    <i class="fas fa-chart-bar"></i>
-    Analytics
-  </a>
-</nav>
-
-<header>
-  <div class="logo">KU<span>PPI</span></div>
-  <div class="subtitle">Housekeeping Quality Assurance</div>
-  <div class="live-badge">
-    <div class="dot"></div>
-    LIVE
-  </div>
-</header>
-
-<div class="stats-bar" id="stats-bar">
-  <div class="stat-chip pending">
-    <div class="stat-header">
-      <i class="fas fa-clock"></i>
-      <span>Pending</span>
-    </div>
-    <span class="count" id="cnt-pending">—</span>
-    <div class="stat-detail">Awaiting cleaning</div>
-  </div>
-  <div class="stat-chip active">
-    <div class="stat-header">
-      <i class="fas fa-spinner fa-spin"></i>
-      <span>Active</span>
-    </div>
-    <span class="count" id="cnt-active">—</span>
-    <div class="stat-detail">In progress</div>
-  </div>
-  <div class="stat-chip complete">
-    <div class="stat-header">
-      <i class="fas fa-check-circle"></i>
-      <span>Complete</span>
-    </div>
-    <span class="count" id="cnt-complete">—</span>
-    <div class="stat-detail">Successfully cleaned</div>
-  </div>
-  <div class="stat-chip incomplete">
-    <div class="stat-header">
-      <i class="fas fa-times-circle"></i>
-      <span>Incomplete</span>
-    </div>
-    <span class="count" id="cnt-incomplete">—</span>
-    <div class="stat-detail">Not fully completed</div>
-  </div>
-  <div class="stat-chip info">
-    <div class="stat-header">
-      <i class="fas fa-percentage"></i>
-      <span>Completion Rate</span>
-    </div>
-    <span class="count" id="cnt-completion-rate">—</span>
-    <div class="stat-detail">Today's performance</div>
-  </div>
-  <div class="stat-chip info">
-    <div class="stat-header">
-      <i class="fas fa-clock"></i>
-      <span>Avg. Time</span>
-    </div>
-    <span class="count" id="cnt-avg-time">—</span>
-    <div class="stat-detail">Per room (minutes)</div>
-  </div>
-</div>
-
-<div class="container">
-  <div class="main-content">
-    <div class="control-bar">
-      <div class="search-box">
-        <i class="fas fa-search"></i>
-        <input type="text" id="search-input" placeholder="Search rooms..." />
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-mark">🌟</div>KUPPI
       </div>
-      <div class="filter-buttons">
-        <button class="filter-btn active" data-filter="all">
-          <i class="fas fa-list"></i> All
-        </button>
-        <button class="filter-btn" data-filter="pending">
-          <i class="fas fa-clock"></i> Pending
-        </button>
-        <button class="filter-btn" data-filter="active">
-          <i class="fas fa-spinner"></i> Active
-        </button>
-        <button class="filter-btn" data-filter="complete">
-          <i class="fas fa-check"></i> Complete
-        </button>
-        <button class="filter-btn" data-filter="incomplete">
-          <i class="fas fa-times"></i> Incomplete
-        </button>
-      </div>
-    </div>
 
-    <main id="grid">
-      <div id="empty-state">
-        <div class="icon">🏨</div>
-        <p>Loading room data…</p>
+      <div class="nav-section">
+        <div class="nav-label">Main</div>
+        <nav>
+          <a href="/dashboard" class="active"><span class="ico">📊</span> Dashboard</a>
+          <a href="/rooms"><span class="ico">🛏️</span> Rooms</a>
+        </nav>
+        <div class="nav-label">Manage</div>
+        <nav>
+          <a href="/staff"><span class="ico">👷</span> Staff</a>
+          <a href="/settings"><span class="ico">⚙️</span> Settings</a>
+        </nav>
       </div>
-    </main>
-  </div>
 
-  <aside class="sidebar">
-    <!-- Staff Performance Panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fas fa-users"></i>
-          Active Staff
+      <div class="sidebar-promo">
+        <strong>Housekeeping QA</strong>
+        <p>Real-time room tracking for supervisors</p>
+      </div>
+    </aside>
+
+    <!-- ── Main ─────────────────────────────────────────────────────── -->
+    <div class="main">
+
+      <header class="topbar">
+        <div>
+          <div class="topbar-title">Room Overview</div>
+          <div class="topbar-sub">Today's cleaning progress</div>
         </div>
-      </div>
-      <div class="panel-body" id="staff-panel">
-        <div class="staff-item">
-          <div class="staff-header">
-            <div class="staff-name">Loading...</div>
-            <div class="staff-status idle">Idle</div>
+        <div class="live-pill">
+          <div class="live-dot"></div>
+          LIVE
+        </div>
+      </header>
+
+      <!-- Stat cards -->
+      <div class="stats-row">
+        <div class="stat-card active" role="button" onclick="filterByStatus('active')" data-status="active"
+          style="cursor: pointer;">
+          <div class="stat-icon">🧹</div>
+          <div>
+            <div class="stat-num" id="cnt-active">—</div>
+            <div class="stat-lbl">In Progress</div>
           </div>
-          <div class="staff-details">No active sessions</div>
         </div>
-      </div>
-    </div>
-
-    <!-- Notifications Panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fas fa-bell"></i>
-          Alerts
+        <div class="stat-card complete" role="button" onclick="filterByStatus('complete')" data-status="complete"
+          style="cursor: pointer;">
+          <div class="stat-icon">✅</div>
+          <div>
+            <div class="stat-num" id="cnt-complete">—</div>
+            <div class="stat-lbl">Complete</div>
+          </div>
         </div>
-      </div>
-      <div class="panel-body" id="alerts-panel">
-        <div class="alert-item info">
-          <i class="fas fa-info-circle alert-icon"></i>
-          <div class="alert-content">
-            <div class="alert-title">System Ready</div>
-            <div class="alert-message">Dashboard is monitoring all rooms</div>
-            <div class="alert-time">Just now</div>
+        <div class="stat-card incomplete" role="button" onclick="filterByStatus('incomplete')" data-status="incomplete"
+          style="cursor: pointer;">
+          <div class="stat-icon">⚠️</div>
+          <div>
+            <div class="stat-num" id="cnt-incomplete">—</div>
+            <div class="stat-lbl">Incomplete</div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Recent Activity Panel -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          <i class="fas fa-history"></i>
-          Recent Activity
-        </div>
+      <!-- Section header -->
+      <div class="sec-head">
+        <h2>All Rooms</h2>
+        <div class="sec-badge" id="room-count-label">Loading…</div>
       </div>
-      <div class="panel-body" id="activity-panel">
-        <div class="activity-item">
-          <div class="activity-icon scan">
-            <i class="fas fa-qrcode"></i>
-          </div>
-          <div class="activity-content">
-            <div class="activity-text">Waiting for events...</div>
-            <div class="activity-time">—</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </aside>
-</div>
 
-<!-- Room Details Modal -->
-<div class="modal" id="room-modal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <div class="modal-title">
-        <i class="fas fa-door-open"></i>
-        <span id="modal-room-title">Room Details</span>
-      </div>
-      <button class="modal-close" onclick="closeRoomModal()">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <div class="modal-body" id="modal-body">
-      <!-- Content will be dynamically inserted -->
+      <div class="room-grid" id="grid"></div>
     </div>
   </div>
-</div>
 
-<div id="toast-container"></div>
+  <div id="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-room-title">Room —</div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
 
-<script>
-  // ── Configuration injected by Flask ───────────────────────────────────────
-  const SUPABASE_URL = {{ supabase_url | tojson }};
-  const SUPABASE_KEY = {{ supabase_key | tojson }};
+      <div class="modal-section">
+        <div class="modal-section-label">Status & Progress</div>
+        <div class="modal-status-line">
+          <div class="modal-stat">
+            <div class="modal-stat-val" id="modal-percent">—%</div>
+            <div class="modal-stat-lbl">Complete</div>
+          </div>
+          <div class="modal-stat">
+            <div class="modal-stat-val" id="modal-zones-done">—</div>
+            <div class="modal-stat-lbl">of 6 Zones</div>
+          </div>
+          <div style="flex:1; display:flex; align-items:flex-end;">
+            <div class="status-tag" id="modal-status-tag">—</div>
+          </div>
+        </div>
+      </div>
 
-  const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
-  const ZONE_ICONS = {
-    "Toilet": "fas fa-toilet",
-    "Wardrobe": "fas fa-tshirt",
-    "Study Desk": "fas fa-desk",
-    "Bed": "fas fa-bed",
-    "Curtain": "fas fa-window-maximize",
-    "Drinks Bar": "fas fa-wine-glass"
-  };
-  const TOTAL  = ZONES.length;
+      <div class="modal-section">
+        <div class="modal-section-label">Zone Checklist</div>
+        <div class="modal-zone-list" id="modal-zones"></div>
+      </div>
 
-  // ── Supabase client ────────────────────────────────────────────────────────
-  const { createClient } = supabase;
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+      <div class="modal-section">
+        <div class="modal-section-label">Detailed Items</div>
+        <div id="modal-items-detail"></div>
+      </div>
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let roomState = {};   // room_number -> { status, zones_done, scanned, missing, start_time }
-  let currentFilter = 'all';
-  let searchQuery = '';
-  let recentActivity = [];
-  let activeStaff = {};
+      <div class="modal-section">
+        <div class="modal-section-label">Session Timeline</div>
+        <div class="modal-time" id="modal-time-info">—</div>
+      </div>
+    </div>
+  </div>
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  function fmt(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
+  <div id="toast-container"></div>
 
-  function fmtFull(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleString();
-  }
+  <script>
+    // ── Config (injected by Flask) ─────────────────────────────────────
+    const SUPABASE_URL = {{ supabase_url | tojson }};
+    const SUPABASE_KEY = {{ supabase_key | tojson }};
 
-  function timeAgo(iso) {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const seconds = Math.floor((new Date() - d) / 1000);
-    if (seconds < 60) return 'Just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  }
+    const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
+    const ZONE_ICONS = {
+      "Toilet": "fas fa-toilet",
+      "Wardrobe": "fas fa-tshirt",
+      "Study Desk": "fas fa-desk",
+      "Bed": "fas fa-bed",
+      "Curtain": "fas fa-window-maximize",
+      "Drinks Bar": "fas fa-wine-glass"
+    };
+    const TOTAL = ZONES.length;
 
-  function statusLabel(s) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
+    const ZONE_ICONS = {
+      "Toilet": "🚿",
+      "Wardrobe": "🚪",
+      "Study Desk": "🖥️",
+      "Bed": "🛏️",
+      "Curtain": "🪟",
+      "Drinks Bar": "☕"
+    };
 
-  function showToast(msg, icon = 'fa-info-circle') {
-    const el = document.createElement('div');
-    el.className = 'toast';
-    el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
-    document.getElementById('toast-container').appendChild(el);
-    setTimeout(() => el.remove(), 4200);
-  }
+    const ZONE_ITEMS = {
+      "Toilet": ["Toilet", "Sink", "Soap", "Tissues", "Amenities", "Mirror", "Shower", "Bathtub", "Towels", "Floor"],
+      "Wardrobe": ["Hangers", "Iron", "Safe", "Laundry Bag", "Slippers"],
+      "Study Desk": ["Thermostat", "Mirror", "Plugs", "Decor", "Drawers", "Chair"],
+      "Bed": ["Bed", "Table", "Drawers", "Lighting", "Controls", "Writing Pad"],
+      "Curtain": ["Seating", "Window", "TV", "Tables", "Drawers", "Catalogue", "Decor", "Plugs"],
+      "Drinks Bar": ["Coffee", "Refreshments", "Kettle", "Fridge", "Counter", "Floor"]
+    };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  function updateStats() {
-    const counts = { pending: 0, active: 0, complete: 0, incomplete: 0, total: 0 };
-    const rooms = Object.values(roomState);
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    rooms.forEach(r => {
-      counts.total++;
-      const k = r.status || 'pending';
-      counts[k] = (counts[k] || 0) + 1;
-    });
+    let roomState = {};
+    let activeFilter = null;
 
-    document.getElementById('cnt-pending').textContent   = counts.pending;
-    document.getElementById('cnt-active').textContent    = counts.active;
-    document.getElementById('cnt-complete').textContent  = counts.complete;
-    document.getElementById('cnt-incomplete').textContent = counts.incomplete;
+    function fmt(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
-    // Completion rate
-    const completionRate = counts.total > 0
-      ? Math.round((counts.complete / counts.total) * 100)
-      : 0;
-    document.getElementById('cnt-completion-rate').textContent = `${completionRate}%`;
+    function showToast(msg, icon = 'fa-info-circle') {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4200);
+    }
 
-    // Average time (placeholder - would need session data)
-    document.getElementById('cnt-avg-time').textContent = '—';
-    calculateAvgTime();
-  }
+    function openModal(room) {
+      const data = roomState[room];
+      if (!data) return;
 
-  async function calculateAvgTime() {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const status = data.status || 'pending';
+      const pct = Math.round((data.zones_done / TOTAL) * 100);
+      const scanned = new Set(data.scanned || []);
 
-      const { data } = await db
-        .from('sessions')
-        .select('start_time, end_time')
-        .eq('status', 'complete')
-        .gte('start_time', today.toISOString());
+      document.getElementById('modal-room-title').textContent = `Room ${room}`;
+      document.getElementById('modal-percent').textContent = `${pct}%`;
+      document.getElementById('modal-zones-done').textContent = data.zones_done;
+      document.getElementById('modal-status-tag').textContent = statusLabel(status);
+      document.getElementById('modal-status-tag').className = `status-tag ${status}`;
 
-      if (data && data.length > 0) {
-        let totalMinutes = 0;
-        data.forEach(session => {
-          if (session.end_time) {
-            const start = new Date(session.start_time);
-            const end = new Date(session.end_time);
-            totalMinutes += (end - start) / (1000 * 60);
+      const zonesHtml = ZONES.map(z => {
+        const done = scanned.has(z);
+        const icon = ZONE_ICONS[z] || '·';
+        return `<div class="modal-zone-item ${done ? 'done' : 'miss'}">
+        <span class="modal-zone-icon">${done ? '✓' : '○'}</span>
+        <span>${icon} ${z}</span>
+      </div>`;
+      }).join('');
+      document.getElementById('modal-zones').innerHTML = zonesHtml;
+
+      // Detailed items per zone
+      const itemsHtml = ZONES.map(zone => {
+        const done = scanned.has(zone);
+        const items = ZONE_ITEMS[zone] || [];
+        const itemsListHtml = items.map(item => `
+        <div class="modal-item ${done ? 'checked' : ''}">
+          <span class="modal-item-icon">${done ? '✓' : '·'}</span>
+          <span>${item}</span>
+        </div>
+      `).join('');
+
+        return `
+        <div class="modal-zone-detail">
+          <div class="modal-zone-detail-header ${done ? 'done' : 'miss'}">
+            <span class="zone-check">${done ? '✓' : '○'}</span>
+            <span>${ZONE_ICONS[zone]} ${zone}</span>
+          </div>
+          <div class="modal-items-list">${itemsListHtml}</div>
+        </div>
+      `;
+      }).join('');
+      document.getElementById('modal-items-detail').innerHTML = itemsHtml;
+
+      const timeInfo = status === 'complete' && data.start_time && data.end_time
+        ? (() => {
+          try {
+            const start = new Date(data.start_time);
+            const end = new Date(data.end_time);
+            const durationMinutes = Math.round((end - start) / 60000);
+            return `⏱️ Cleaning took ${durationMinutes} minutes`;
+          } catch (e) {
+            return `Started at ${fmt(data.start_time)}`;
           }
-        });
-        const avg = Math.round(totalMinutes / data.length);
-        document.getElementById('cnt-avg-time').textContent = avg;
-      }
-    } catch (err) {
-      console.error('Failed to calculate average time:', err);
-    }
-  }
+        })()
+        : data.start_time
+          ? `Started at ${fmt(data.start_time)}`
+          : 'Not started yet';
+      document.getElementById('modal-time-info').textContent = timeInfo;
 
-  function getZoneIcon(zoneName) {
-    return ZONE_ICONS[zoneName] || 'fas fa-question';
-  }
-
-  function renderTile(room) {
-    const data   = roomState[room];
-    const pct    = Math.round((data.zones_done / TOTAL) * 100);
-    const status = data.status || 'pending';
-
-    const scannedSet = new Set(data.scanned || []);
-
-    const zonesHtml = ZONES.map(z => {
-      const done = scannedSet.has(z);
-      const iconClass = done ? 'fas fa-check-circle' : 'fas fa-circle';
-      return `<div class="zone-item ${done ? 'done' : 'miss'}">
-        <span class="zone-icon"><i class="${iconClass}"></i></span>
-        <span>${z}</span>
-      </div>`;
-    }).join('');
-
-    const startHtml = data.start_time
-      ? `<div class="start-time"><i class="fas fa-clock"></i> Started ${fmt(data.start_time)}</div>`
-      : '';
-
-    return `
-      <div class="room-tile" id="tile-${room}" data-status="${status}" data-room="${room}" onclick="showRoomDetails('${room}')">
-        <div class="tile-header">
-          <div class="room-number"><i class="fas fa-door-open"></i> ${room}</div>
-          <div class="status-badge ${status}">${statusLabel(status)}</div>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-label">
-            <span>Zones cleaned</span>
-            <span>${data.zones_done} / ${TOTAL}</span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${pct}%"></div>
-          </div>
-        </div>
-        <div class="zones-grid">${zonesHtml}</div>
-        ${startHtml}
-      </div>`;
-  }
-
-  function renderGrid() {
-    const grid = document.getElementById('grid');
-    let rooms = Object.keys(roomState).sort((a, b) =>
-      // Natural (numeric-aware) sort so '10' comes after '9', not after '1'
-      a.localeCompare(b, undefined, { numeric: true }));
-
-    // Apply filter
-    if (currentFilter !== 'all') {
-      rooms = rooms.filter(room => {
-        const status = roomState[room].status || 'pending';
-        return status === currentFilter;
-      });
+      document.getElementById('modal-overlay').classList.add('open');
     }
 
-    // Apply search
-    if (searchQuery) {
-      rooms = rooms.filter(room => room.toLowerCase().includes(searchQuery.toLowerCase()));
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('open');
     }
 
-    // Clear empty state if exists
-    const emptyState = document.getElementById('empty-state');
-    if (emptyState) emptyState.remove();
-
-    if (rooms.length === 0) {
-      grid.innerHTML = `<div id="empty-state">
-        <div class="icon"><i class="fas fa-search"></i></div>
-        <p>No rooms match your current filter or search.</p>
-      </div>`;
-      return;
+    function updateStats() {
+      const c = { pending: 0, active: 0, complete: 0, incomplete: 0 };
+      Object.values(roomState).forEach(r => { c[r.status || 'pending']++; });
+      document.getElementById('cnt-active').textContent = c.active;
+      document.getElementById('cnt-complete').textContent = c.complete;
+      document.getElementById('cnt-incomplete').textContent = c.incomplete;
+      const total = Object.keys(roomState).length;
+      document.getElementById('room-count-label').textContent =
+        total + ' room' + (total !== 1 ? 's' : '');
     }
 
-    // Track existing room IDs
-    const existingRoomIds = new Set(rooms);
-
-    // Update or create tiles for filtered rooms
-    rooms.forEach(room => {
-      const existing = document.getElementById(`tile-${room}`);
-      const html = renderTile(room);
-      if (existing) {
-        existing.outerHTML = html;
+    function filterByStatus(status) {
+      if (activeFilter === status) {
+        activeFilter = null;
       } else {
-        grid.insertAdjacentHTML('beforeend', html);
+        activeFilter = status;
       }
-    });
 
-    // Remove tiles that don't match filter/search
-    grid.querySelectorAll('.room-tile').forEach(el => {
-      const r = el.getAttribute('data-room');
-      if (!existingRoomIds.has(r)) {
-        el.remove();
-      }
-    });
-  }
-
-  // ── Fetch full status from REST API ────────────────────────────────────────
-  async function loadStatus() {
-    try {
-      const res = await fetch('/api/status');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      data.forEach(room => {
-        roomState[room.room] = room;
+      // Update filter button styling
+      document.querySelectorAll('.stat-card[role="button"]').forEach(card => {
+        card.classList.remove('active-filter');
       });
+      if (activeFilter) {
+        document.querySelector(`.stat-card[data-status="${activeFilter}"]`).classList.add('active-filter');
+      }
 
       renderGrid();
-      updateStats();
-    } catch (err) {
-      console.error('Failed to load room status:', err);
     }
-  }
 
-  // ── Supabase real-time subscription ────────────────────────────────────────
-  function subscribeRealtime() {
-    // Listen for new scans — refresh the affected room tile immediately
-    db.channel('kuppi-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'scans' },
-        async (payload) => {
-          console.log('Scan event:', payload);
-          const row = payload.new || {};
-          addActivity('scan', `Scan recorded in Room ${row.room || '?'}: ${row.area || '?'}`, new Date().toISOString());
-          await loadStatus();
-          showToast('New scan received', 'fa-qrcode');
-        })
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'sessions' },
-        async (payload) => {
-          console.log('Session event:', payload);
-          const row = payload.new || {};
-          const verb = payload.eventType === 'INSERT' ? 'opened' :
-                       (row.status === 'complete' ? 'completed' :
-                        row.status === 'incomplete' ? 'incomplete' : 'updated');
-          addActivity('session', `Room ${row.room} session ${verb}`, new Date().toISOString());
-          await loadStatus();
-          if (row.room) {
-            const icon = row.status === 'complete' ? 'fa-check-circle' : 'fa-door-open';
-            showToast(`Room ${row.room} session ${verb}`, icon);
-          }
-          checkAlerts(row);
-        })
-      .subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Real-time channel connected');
+    function statusLabel(s) {
+      const map = { pending: 'Pending', active: 'In Progress', complete: 'Complete', incomplete: 'Incomplete' };
+      return map[s] || s;
+    }
+
+    function renderCard(room) {
+      const data = roomState[room];
+      const status = data.status || 'pending';
+      const pct = Math.round((data.zones_done / TOTAL) * 100);
+      const scanned = new Set(data.scanned || []);
+
+      const zonesHtml = ZONES.map(z => {
+        const done = scanned.has(z);
+        const icon = ZONE_ICONS[z] || '·';
+        return `<div class="zone-item ${done ? 'done' : 'miss'}">
+        <div class="zone-tick">${done ? '✓' : '–'}</div>
+        <span class="zone-name">${icon} ${z}</span>
+      </div>`;
+      }).join('');
+
+      let startStr = '';
+      if (status === 'complete' && data.start_time && data.end_time) {
+        // Calculate duration for completed rooms
+        try {
+          const start = new Date(data.start_time);
+          const end = new Date(data.end_time);
+          const durationMinutes = Math.round((end - start) / 60000);
+          startStr = `⏱️ Took ${durationMinutes} min`;
+        } catch (e) {
+          startStr = `🕐 Started ${fmt(data.start_time)}`;
         }
-      });
-  }
+      } else {
+        startStr = data.start_time
+          ? `🕐 Started ${fmt(data.start_time)}`
+          : `⏳ Not started`;
+      }
 
-  // ── Modal Functions ─────────────────────────────────────────────────────────
-  function showRoomDetails(roomNum) {
-    const room = roomState[roomNum];
-    if (!room) return;
-
-    document.getElementById('modal-room-title').textContent = `Room ${roomNum}`;
-
-    const status = room.status || 'pending';
-    const scannedSet = new Set(room.scanned || []);
-    const pct = Math.round((room.zones_done / TOTAL) * 100);
-
-    const zonesDetails = ZONES.map(z => {
-      const done = scannedSet.has(z);
-      const icon = done ? 'fas fa-check-circle' : 'fas fa-circle';
-      const color = done ? 'var(--tick)' : 'var(--text-muted)';
       return `
-        <div class="scan-history-item">
-          <i class="${icon}" style="color: ${color}; font-size: 1.5rem;"></i>
-          <div class="scan-history-details">
-            <div class="scan-history-area">${z}</div>
-            <div class="scan-history-time">${done ? 'Completed' : 'Not scanned'}</div>
+      <div class="room-card" id="tile-${room}" data-status="${status}" role="button" onclick="openModal('${room}')" style="cursor: pointer;">
+        <div class="card-accent"></div>
+        <div class="card-inner">
+          <div class="card-row1">
+            <div>
+              <div class="room-num">Room ${room}</div>
+              <div class="room-sub">${data.zones_done} of ${TOTAL} zones done</div>
+            </div>
+            <div class="status-tag">${statusLabel(status)}</div>
           </div>
+
+          <div class="prog">
+            <div class="prog-top">
+              <span class="pl">Progress</span>
+              <span class="pn">${pct}%</span>
+            </div>
+            <div class="prog-track">
+              <div class="prog-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+
+          <div class="zones-heading">Zone Checklist</div>
+          <div class="zones-grid">${zonesHtml}</div>
         </div>
-      `;
-    }).join('');
-
-    const modalBody = `
-      <div class="modal-section">
-        <div class="modal-section-title">
-          <i class="fas fa-info-circle"></i>
-          Status Overview
+        <div class="card-foot">
+          <span>${startStr}</span>
+          <span><span class="cf-count">${data.zones_done}/${TOTAL}</span> zones</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Status</div>
-            <div class="status-badge ${status}">${statusLabel(status)}</div>
-          </div>
-          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Progress</div>
-            <div style="font-size: 1.5rem; font-weight: 700;">${pct}%</div>
-          </div>
-          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Zones Done</div>
-            <div style="font-size: 1.5rem; font-weight: 700;">${room.zones_done} / ${TOTAL}</div>
-          </div>
-          <div style="background: var(--surface-2); padding: 1rem; border-radius: 8px;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Started</div>
-            <div style="font-size: 0.95rem; font-weight: 600;">${room.start_time ? fmt(room.start_time) : '—'}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-section">
-        <div class="modal-section-title">
-          <i class="fas fa-list-check"></i>
-          Zone Details
-        </div>
-        ${zonesDetails}
-      </div>
-    `;
-
-    document.getElementById('modal-body').innerHTML = modalBody;
-    document.getElementById('room-modal').classList.add('active');
-  }
-
-  function closeRoomModal() {
-    document.getElementById('room-modal').classList.remove('active');
-  }
-
-  // Close modal on backdrop click
-  document.addEventListener('click', (e) => {
-    const modal = document.getElementById('room-modal');
-    if (e.target === modal) {
-      closeRoomModal();
+      </div>`;
     }
-  });
 
-  // ── Filter & Search Functions ───────────────────────────────────────────────
-  function setupFiltersAndSearch() {
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.getAttribute('data-filter');
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      let rooms = Object.keys(roomState).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true }));
+
+      // Apply active filter
+      if (activeFilter) {
+        rooms = rooms.filter(room => (roomState[room].status || 'pending') === activeFilter);
+      }
+
+      // Clear ALL content (cards and messages) first
+      grid.innerHTML = '';
+
+      if (rooms.length === 0) {
+        // Show message only if we have an active filter with no rooms
+        if (activeFilter) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'empty-state';
+          const statusName = statusLabel(activeFilter);
+          emptyDiv.innerHTML = `<div class="e-icon">🏨</div>
+          <p>No rooms with status "${statusName}" found.</p>`;
+          grid.appendChild(emptyDiv);
+        }
+        return;
+      }
+
+      // Add only filtered rooms
+      rooms.forEach((room, i) => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = renderCard(room);
+        const card = tmp.firstElementChild;
+        card.style.animationDelay = `${i * 40}ms`;
+        grid.appendChild(card);
+      });
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        data.forEach(room => { roomState[room.room] = room; });
         renderGrid();
-      });
-    });
-
-    // Search input
-    document.getElementById('search-input').addEventListener('input', (e) => {
-      searchQuery = e.target.value;
-      renderGrid();
-    });
-  }
-
-  // ── Activity Feed ────────────────────────────────────────────────────────────
-  function addActivity(type, text, time) {
-    recentActivity.unshift({ type, text, time });
-    if (recentActivity.length > 10) recentActivity.pop();
-    renderActivity();
-  }
-
-  function renderActivity() {
-    const panel = document.getElementById('activity-panel');
-    if (recentActivity.length === 0) {
-      panel.innerHTML = `
-        <div class="activity-item">
-          <div class="activity-icon scan">
-            <i class="fas fa-qrcode"></i>
-          </div>
-          <div class="activity-content">
-            <div class="activity-text">Waiting for events...</div>
-            <div class="activity-time">—</div>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    const html = recentActivity.map(activity => {
-      const iconClass = activity.type === 'scan' ? 'scan' :
-                       activity.text.includes('completed') ? 'complete' : 'session';
-      const icon = activity.type === 'scan' ? 'fa-qrcode' : 'fa-door-open';
-      return `
-        <div class="activity-item">
-          <div class="activity-icon ${iconClass}">
-            <i class="fas ${icon}"></i>
-          </div>
-          <div class="activity-content">
-            <div class="activity-text">${activity.text}</div>
-            <div class="activity-time">${timeAgo(activity.time)}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    panel.innerHTML = html;
-  }
-
-  // ── Alerts System ─────────────────────────────────────────────────────────────
-  function checkAlerts(session) {
-    const alerts = [];
-
-    // Check for long-running sessions (> 30 minutes)
-    if (session.status === 'active' && session.start_time) {
-      const start = new Date(session.start_time);
-      const now = new Date();
-      const minutes = (now - start) / (1000 * 60);
-      if (minutes > 30) {
-        addAlert('warning', 'Long Session', `Room ${session.room} has been in progress for ${Math.round(minutes)} minutes`, new Date().toISOString());
+        updateStats();
+      } catch (err) {
+        console.error('Failed to load room status:', err);
       }
     }
 
-    // Check for incomplete sessions
-    if (session.status === 'incomplete') {
-      addAlert('error', 'Incomplete Session', `Room ${session.room} was marked incomplete`, new Date().toISOString());
+    function subscribeRealtime() {
+      db.channel('kuppi-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'scans' },
+          async () => { await loadStatus(); showToast('📡 New scan received'); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' },
+          async (payload) => {
+            const row = payload.new || {};
+            const verb = payload.eventType === 'INSERT' ? 'opened' :
+              (row.status === 'complete' ? 'completed' :
+                row.status === 'incomplete' ? 'incomplete' : 'updated');
+            addActivity('session', `Room ${row.room} session ${verb}`, new Date().toISOString());
+            await loadStatus();
+            if (row.room) showToast(`Room ${row.room} session ${verb}`);
+          })
+        .subscribe(s => { if (s === 'SUBSCRIBED') console.log('Realtime connected'); });
     }
-  }
 
-  function addAlert(type, title, message, time) {
-    const panel = document.getElementById('alerts-panel');
-    const alertHtml = `
-      <div class="alert-item ${type}">
-        <i class="fas ${type === 'warning' ? 'fa-exclamation-triangle' : type === 'error' ? 'fa-times-circle' : 'fa-info-circle'} alert-icon"></i>
-        <div class="alert-content">
-          <div class="alert-title">${title}</div>
-          <div class="alert-message">${message}</div>
-          <div class="alert-time">${timeAgo(time)}</div>
-        </div>
-      </div>
-    `;
-    panel.insertAdjacentHTML('afterbegin', alertHtml);
+    (async () => {
+      await loadStatus();
+      setupFiltersAndSearch();
+      subscribeRealtime();
+      setInterval(loadStatus, 30_000);
 
-    // Keep only last 5 alerts
-    const alerts = panel.querySelectorAll('.alert-item');
-    if (alerts.length > 5) {
-      alerts[alerts.length - 1].remove();
-    }
-  }
-
-  // ── Staff Performance (placeholder) ──────────────────────────────────────────
-  async function updateStaffPanel() {
-    // This would fetch active staff from sessions or a dedicated endpoint
-    // For now, showing placeholder
-    const panel = document.getElementById('staff-panel');
-    panel.innerHTML = `
-      <div class="staff-item">
-        <div class="staff-header">
-          <div class="staff-name">No Active Staff</div>
-          <div class="staff-status idle">Idle</div>
-        </div>
-        <div class="staff-details">No active cleaning sessions</div>
-      </div>
-    `;
-  }
-
-  // ── Initialise ─────────────────────────────────────────────────────────────
-  (async () => {
-    await loadStatus();
-    setupFiltersAndSearch();
-    subscribeRealtime();
-    updateStaffPanel();
-
-    // Fallback poll every 30 s in case the real-time WebSocket is unavailable
-    // (e.g. network restrictions, Supabase plan limits, or initial load race).
-    setInterval(loadStatus, 30_000);
-    setInterval(() => renderActivity(), 60_000); // Update time-ago every minute
-  })();
-</script>
+      // Close modal when clicking outside
+      document.getElementById('modal-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'modal-overlay') closeModal();
+      });
+    })();
+  </script>
 
 </body>
+
 </html>

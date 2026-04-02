@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUPPI — Room Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #f0f2fb;
+      --sidebar-bg:    #ffffff;
+      --card-bg:       #ffffff;
+
+      --indigo:        #5B52E8;
+      --indigo-light:  #edecfd;
+      --indigo-xlight: #f5f4ff;
+
+      --available-c:    #22C07A;
+      --available-bg:   #edfaf3;
+      --blocked-c:      #E85252;
+      --blocked-bg:     #fff0f0;
+      --maintenance-c:  #E8A020;
+      --maintenance-bg: #fff8ec;
+      --inactive-c:     #9BAAB8;
+      --inactive-bg:    #f3f6f9;
+
+      --text:          #1a1a2e;
+      --text-2:        #4a4a6a;
+      --text-muted:    #9a9ab0;
+      --border:        #e4e6f0;
+      --border-light:  #f0f2f8;
+
+      --font-body: 'Nunito Sans', sans-serif;
+      --font-head: 'Barlow', sans-serif;
+      --radius: 14px;
+      --sidebar-w: 270px;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.25rem;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: .02em;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .25rem .5rem;
+      margin-bottom: .75rem;
+    }
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: var(--indigo);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: white;
+      flex-shrink: 0;
+    }
+    .logo em { color: var(--indigo); font-style: normal; }
+
+    .nav-section { margin-top: 1.75rem; }
+    .nav-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 .85rem;
+      margin-bottom: .5rem;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .75rem .85rem;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all .15s;
+      margin-bottom: 3px;
+    }
+    nav a .ico { font-size: 18px; width: 22px; text-align: center; opacity: .8; }
+    nav a:hover { background: var(--bg); color: var(--text); }
+    nav a.active { background: var(--indigo-light); color: var(--indigo); }
+    nav a.active .ico { opacity: 1; }
+
+    .sidebar-promo {
+      margin-top: auto;
+      background: linear-gradient(145deg, #5B52E8, #8B80F8);
+      border-radius: 14px;
+      padding: 1.35rem;
+      color: white;
+    }
+    .sidebar-promo strong {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: block;
+      margin-bottom: .4rem;
+    }
+    .sidebar-promo p { font-size: .88rem; opacity: .85; line-height: 1.5; }
+
+    /* ── Main ─────────────────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Topbar ───────────────────────────────────────────────────── */
+    .topbar {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 9;
+    }
+    .topbar-title {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+    .topbar-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
+
+    .btn-add {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      background: var(--indigo);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: .7rem 1.4rem;
+      font-family: var(--font-body);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .btn-add:hover { background: #4840d0; transform: translateY(-1px); }
+
+    /* ── Content area ─────────────────────────────────────────────── */
+    .content { padding: 2rem 2.5rem 2.5rem; }
+
+    /* ── Summary pills ────────────────────────────────────────────── */
+    .summary-row {
+      display: flex;
+      gap: .75rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+    .summary-pill {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .55rem 1.1rem;
+      border-radius: 999px;
+      font-size: .9rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .summary-pill .sp-count { font-family: var(--font-head); font-size: 1.1rem; }
+    .summary-pill.available   { background: var(--available-bg);   color: var(--available-c);   border-color: #a7edd0; }
+    .summary-pill.blocked     { background: var(--blocked-bg);     color: var(--blocked-c);     border-color: #f9c0c0; }
+    .summary-pill.maintenance { background: var(--maintenance-bg); color: var(--maintenance-c); border-color: #f9dcaa; }
+    .summary-pill.inactive    { background: var(--inactive-bg);    color: var(--inactive-c);    border-color: #d4dce5; }
+
+    /* ── Table card ───────────────────────────────────────────────── */
+    .table-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.5rem;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .table-toolbar-title {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .room-count-badge {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: .3rem .8rem;
+      border-radius: 999px;
+      margin-left: .75rem;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead { background: var(--indigo-xlight); }
+    th {
+      text-align: left;
+      padding: .9rem 1.25rem;
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border-light);
+      font-size: .97rem;
+      color: var(--text-2);
+      vertical-align: middle;
+    }
+
+    tbody tr { transition: background .12s; }
+    tbody tr:hover { background: var(--indigo-xlight); }
+
+    td.room-num-cell {
+      font-family: var(--font-head);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    td .nfc-code {
+      font-family: monospace;
+      font-size: .88rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: .2rem .55rem;
+      border-radius: 6px;
+      color: var(--text-2);
+    }
+
+    /* ── Status badge ─────────────────────────────────────────────── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .85rem;
+      border-radius: 999px;
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      white-space: nowrap;
+    }
+    .status-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-badge.available   { background: var(--available-bg);   color: var(--available-c); }
+    .status-badge.available::before   { background: var(--available-c); }
+    .status-badge.blocked     { background: var(--blocked-bg);     color: var(--blocked-c); }
+    .status-badge.blocked::before     { background: var(--blocked-c); }
+    .status-badge.maintenance { background: var(--maintenance-bg); color: var(--maintenance-c); }
+    .status-badge.maintenance::before { background: var(--maintenance-c); }
+    .status-badge.inactive    { background: var(--inactive-bg);    color: var(--inactive-c); }
+    .status-badge.inactive::before    { background: var(--inactive-c); }
+
+    /* ── Time badge for cleaning duration ──────────────────────── */
+    .time-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .35rem .95rem;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .time-badge.fast {
+      background: #edfaf3;
+      color: #22C07A;
+    }
+    .time-badge.slow {
+      background: #fff0f0;
+      color: #E85252;
+    }
+    .time-badge.empty {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .staff-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .staff-name.empty {
+      color: var(--text-muted);
+    }
+
+    /* ── Action buttons ───────────────────────────────────────────── */
+    .action-btns { display: flex; gap: .5rem; }
+
+    .btn-edit, .btn-del {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .45rem .95rem;
+      font-family: var(--font-body);
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .13s;
+    }
+    .btn-edit {
+      background: white;
+      color: var(--indigo);
+      border-color: var(--indigo-light);
+    }
+    .btn-edit:hover { background: var(--indigo-light); }
+    .btn-del {
+      background: white;
+      color: var(--blocked-c);
+      border-color: #f9c0c0;
+    }
+    .btn-del:hover { background: var(--blocked-bg); }
+
+    /* ── Empty / loading ──────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .empty-state .e-icon { font-size: 2.5rem; margin-bottom: .75rem; opacity: .5; }
+    .empty-state p { margin-bottom: 1.25rem; font-size: 1rem; }
+
+    /* ── Modal overlay ────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(26,26,46,.55);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 90%;
+      max-width: 580px;
+      max-height: 92vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(91,82,232,.15);
+      animation: modalIn .2s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(12px) scale(.98); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .modal-header {
+      padding: 1.5rem 1.75rem;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h2 {
+      font-family: var(--font-head);
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .13s;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+
+    .modal-body { padding: 1.75rem; }
+    .modal-footer {
+      padding: 1.25rem 1.75rem;
+      border-top: 1px solid var(--border-light);
+      display: flex;
+      gap: .75rem;
+      justify-content: flex-end;
+      background: var(--indigo-xlight);
+    }
+
+    /* ── Form ─────────────────────────────────────────────────────── */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label {
+      display: block;
+      font-size: .88rem;
+      font-weight: 700;
+      color: var(--text-2);
+      margin-bottom: .45rem;
+      letter-spacing: .02em;
+    }
+    .form-group small {
+      display: block;
+      margin-top: .35rem;
+      color: var(--text-muted);
+      font-size: .8rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: .75rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      color: var(--text);
+      font-size: .97rem;
+      font-family: var(--font-body);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 3px rgba(91,82,232,.1);
+      background: white;
+    }
+    select.form-control { cursor: pointer; }
+    textarea.form-control { resize: vertical; min-height: 80px; }
+
+    /* ── Modal buttons ────────────────────────────────────────────── */
+    .mbtn {
+      padding: .7rem 1.35rem;
+      border-radius: 9px;
+      font-family: var(--font-body);
+      font-size: .97rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all .13s;
+    }
+    .mbtn-cancel {
+      background: white;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .mbtn-cancel:hover { background: var(--bg); }
+    .mbtn-save {
+      background: var(--indigo);
+      color: white;
+    }
+    .mbtn-save:hover { background: #4840d0; }
+    .mbtn-danger {
+      background: var(--blocked-c);
+      color: white;
+    }
+    .mbtn-danger:hover { background: #d03e3e; }
+
+    /* ── Delete modal warning ─────────────────────────────────────── */
+    .delete-warning {
+      background: var(--blocked-bg);
+      border: 1px solid #f9c0c0;
+      border-radius: 11px;
+      padding: 1.25rem 1.5rem;
+    }
+    .delete-warning p { font-size: 1rem; color: var(--text-2); line-height: 1.5; }
+    .delete-warning strong { color: var(--blocked-c); }
+    .delete-note { margin-top: .85rem; font-size: .86rem; color: var(--text-muted); }
+
+    /* ── Toast ────────────────────────────────────────────────────── */
+    #toast-container {
+      position: fixed;
+      bottom: 1.75rem; right: 1.75rem;
+      display: flex; flex-direction: column; gap: .6rem;
+      z-index: 9999; pointer-events: none;
+    }
+    .toast {
+      background: var(--text);
+      color: white;
+      border-radius: 10px;
+      padding: .8rem 1.25rem;
+      font-size: .95rem;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateX(20px);
+      animation: tin .3s forwards, tout .3s 2.7s forwards;
+      max-width: 300px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+    }
+    .toast.error { background: var(--blocked-c); }
+    @keyframes tin  { to { opacity: 1; transform: translateX(0); } }
+    @keyframes tout { to { opacity: 0; transform: translateX(20px); } }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">🌟</div>KUPPI
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <nav>
+        <a href="/dashboard"><span class="ico">📊</span> Dashboard</a>
+        <a href="/rooms" class="active"><span class="ico">🛏️</span> Rooms</a>
+      </nav>
+      <div class="nav-label">Manage</div>
+      <nav>
+        <a href="/staff"><span class="ico">👷</span> Staff</a>
+        <a href="/settings"><span class="ico">⚙️</span> Settings</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-promo">
+      <strong>Housekeeping QA</strong>
+      <p>Real-time room tracking for supervisors</p>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">Room Management</div>
+        <div class="topbar-sub">Add, edit and configure rooms</div>
+      </div>
+      <button class="btn-add" onclick="openCreateModal()">+ Add Room</button>
+    </header>
+
+    <div class="content">
+
+      <!-- Summary pills -->
+      <div class="summary-row" id="summary-row">
+        <div class="summary-pill available"><span class="sp-count" id="cnt-available">—</span> Available</div>
+        <div class="summary-pill blocked"><span class="sp-count" id="cnt-blocked">—</span> Blocked</div>
+        <div class="summary-pill maintenance"><span class="sp-count" id="cnt-maintenance">—</span> Maintenance</div>
+        <div class="summary-pill inactive"><span class="sp-count" id="cnt-inactive">—</span> Inactive</div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div style="display:flex;align-items:center;">
+            <span class="table-toolbar-title">All Rooms</span>
+            <span class="room-count-badge" id="room-count-badge">—</span>
+          </div>
+        </div>
+
+        <table id="rooms-table">
+          <thead>
+            <tr>
+              <th>Room</th>
+              <th>Floor</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Cleaned By</th>
+              <th>Time Taken</th>
+              <th>NFC UID</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rooms-tbody">
+            <tr><td colspan="7"><div class="empty-state"><p>Loading rooms…</p></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── Add / Edit Modal ──────────────────────────────────────────── -->
+<div class="modal-overlay" id="room-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Room</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="room-id" />
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="room-number">Room Number *</label>
+          <input type="text" id="room-number" class="form-control" required placeholder="e.g. 301" />
+        </div>
+        <div class="form-group">
+          <label for="floor">Floor</label>
+          <input type="text" id="floor" class="form-control" placeholder="e.g. 3" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="room-type">Room Type</label>
+          <input type="text" id="room-type" class="form-control" placeholder="e.g. Suite, Deluxe" />
+        </div>
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" class="form-control">
+            <option value="available">Available</option>
+            <option value="blocked">Blocked</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="reason">Reason</label>
+        <textarea id="reason" class="form-control" placeholder="Optional: reason for current status"></textarea>
+        <small>Required if status is blocked, maintenance, or inactive</small>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0">
+        <label for="nfc-uid">Door NFC UID</label>
+        <input type="text" id="nfc-uid" class="form-control" placeholder="e.g. DOOR-301" />
+        <small>The NFC tag UID for the door reader</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="mbtn mbtn-save" onclick="saveRoom()">Save Room</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirmation Modal ─────────────────────────────────── -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Delete Room</h2>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="delete-warning">
+        <p>You are about to delete room <strong id="delete-room-number"></strong>.</p>
+        <p class="delete-note">This action cannot be undone. All associated sessions and scans will be orphaned.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-cancel" onclick="closeDeleteModal()">Cancel</button>
+      <button class="mbtn mbtn-danger" onclick="confirmDelete()">Delete Room</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  let rooms = [];
+  let editingRoomId = null;
+  let deletingRoomId = null;
+
+  function showToast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast${type === 'error' ? ' error' : ''}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  function escapeHtml(text) {
+    if (text == null) return '';
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
+
+  async function loadRooms() {
+    try {
+      const res = await fetch('/api/rooms');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      rooms = await res.json();
+      renderTable();
+      updateSummary();
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to load rooms', 'error');
+      document.getElementById('rooms-tbody').innerHTML =
+        '<tr><td colspan="7"><div class="empty-state"><p>Failed to load rooms.</p></div></td></tr>';
+    }
+  }
+
+  function updateSummary() {
+    const c = { available: 0, blocked: 0, maintenance: 0, inactive: 0 };
+    rooms.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+    document.getElementById('cnt-available').textContent    = c.available;
+    document.getElementById('cnt-blocked').textContent      = c.blocked;
+    document.getElementById('cnt-maintenance').textContent  = c.maintenance;
+    document.getElementById('cnt-inactive').textContent     = c.inactive;
+    document.getElementById('room-count-badge').textContent = rooms.length + ' room' + (rooms.length !== 1 ? 's' : '');
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('rooms-tbody');
+
+    if (rooms.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+        <div class="e-icon">🏨</div>
+        <p>No rooms yet</p>
+        <button class="btn-add" onclick="openCreateModal()">+ Add Your First Room</button>
+      </div></td></tr>`;
+      return;
+    }
+
+    // Fetch sessions and populate staff + time info
+    fetchRoomSessions();
+  }
+
+  async function fetchRoomSessions() {
+    try {
+      const res = await fetch('/api/recent-sessions');
+      const sessions = await res.ok ? await res.json() : {};
+      
+      const tbody = document.getElementById('rooms-tbody');
+      tbody.innerHTML = rooms
+        .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }))
+        .map(room => {
+          const session = sessions[room.id] || null;
+          let staffHtml = '<span class="staff-name empty">—</span>';
+          let timeHtml = '<span class="time-badge empty">—</span>';
+
+          if (session && session.card_uid) {
+            staffHtml = `<span class="staff-name">${escapeHtml(session.card_uid)}</span>`;
+            
+            if (session.duration_minutes !== null && session.duration_minutes !== undefined) {
+              const mins = Math.round(session.duration_minutes);
+              const isFast = session.duration_minutes <= 25;
+              const badgeClass = isFast ? 'fast' : 'slow';
+              const icon = isFast ? '✓' : '⚠️';
+              timeHtml = `<span class="time-badge ${badgeClass}">${icon} ${mins} min</span>`;
+            }
+          }
+
+          return `
+            <tr>
+              <td class="room-num-cell">${escapeHtml(room.room_number)}</td>
+              <td>${escapeHtml(room.floor || '—')}</td>
+              <td>${escapeHtml(room.room_type || '—')}</td>
+              <td><span class="status-badge ${room.status}">${room.status}</span></td>
+              <td>${staffHtml}</td>
+              <td>${timeHtml}</td>
+              <td><span class="nfc-code">${escapeHtml(room.nfc_uid || '—')}</span></td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-edit" onclick="openEditModal('${room.id}')">Edit</button>
+                  <button class="btn-del"  onclick="openDeleteModal('${room.id}')">Delete</button>
+                </div>
+              </td>
+            </tr>`;
+        }).join('');
+    } catch (err) {
+      console.error('Failed to fetch sessions:', err);
+      // Render table with empty staff/time columns on error
+      const tbody = document.getElementById('rooms-tbody');
+      tbody.innerHTML = rooms
+        .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }))
+        .map(room => `
+          <tr>
+            <td class="room-num-cell">${escapeHtml(room.room_number)}</td>
+            <td>${escapeHtml(room.floor || '—')}</td>
+            <td>${escapeHtml(room.room_type || '—')}</td>
+            <td><span class="status-badge ${room.status}">${room.status}</span></td>
+            <td><span class="staff-name empty">—</span></td>
+            <td><span class="time-badge empty">—</span></td>
+            <td><span class="nfc-code">${escapeHtml(room.nfc_uid || '—')}</span></td>
+            <td>
+              <div class="action-btns">
+                <button class="btn-edit" onclick="openEditModal('${room.id}')">Edit</button>
+                <button class="btn-del"  onclick="openDeleteModal('${room.id}')">Delete</button>
+              </div>
+            </td>
+          </tr>`).join('');
+    }
+  }
+
+  function openCreateModal() {
+    editingRoomId = null;
+    document.getElementById('modal-title').textContent = 'Add Room';
+    document.getElementById('room-id').value = '';
+    document.getElementById('room-number').value = '';
+    document.getElementById('floor').value = '';
+    document.getElementById('room-type').value = '';
+    document.getElementById('status').value = 'available';
+    document.getElementById('reason').value = '';
+    document.getElementById('nfc-uid').value = '';
+    document.getElementById('room-modal').classList.add('active');
+  }
+
+  function openEditModal(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    editingRoomId = roomId;
+    document.getElementById('modal-title').textContent = `Edit Room ${room.room_number}`;
+    document.getElementById('room-id').value    = room.id;
+    document.getElementById('room-number').value = room.room_number;
+    document.getElementById('floor').value       = room.floor || '';
+    document.getElementById('room-type').value   = room.room_type || '';
+    document.getElementById('status').value      = room.status;
+    document.getElementById('reason').value      = room.reason || '';
+    document.getElementById('nfc-uid').value     = room.nfc_uid || '';
+    document.getElementById('room-modal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('room-modal').classList.remove('active');
+    editingRoomId = null;
+  }
+
+  function openDeleteModal(roomId) {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+    deletingRoomId = roomId;
+    document.getElementById('delete-room-number').textContent = room.room_number;
+    document.getElementById('delete-modal').classList.add('active');
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('delete-modal').classList.remove('active');
+    deletingRoomId = null;
+  }
+
+  async function saveRoom() {
+    const roomNumber = document.getElementById('room-number').value.trim();
+    if (!roomNumber) { showToast('Room number is required', 'error'); return; }
+
+    const data = {
+      room_number: roomNumber,
+      floor:     document.getElementById('floor').value.trim()     || null,
+      room_type: document.getElementById('room-type').value.trim() || null,
+      status:    document.getElementById('status').value,
+      reason:    document.getElementById('reason').value.trim()    || null,
+      nfc_uid:   document.getElementById('nfc-uid').value.trim()   || null,
+    };
+
+    try {
+      const url    = editingRoomId ? `/api/rooms/${editingRoomId}` : '/api/rooms';
+      const method = editingRoomId ? 'PUT' : 'POST';
+      const res    = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to save'); }
+      showToast(editingRoomId ? 'Room updated' : 'Room created');
+      closeModal();
+      await loadRooms();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deletingRoomId) return;
+    try {
+      const res = await fetch(`/api/rooms/${deletingRoomId}`, { method: 'DELETE' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Failed to delete'); }
+      showToast('Room deleted');
+      closeDeleteModal();
+      await loadRooms();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  loadRooms();
+</script>
+
+</body>
+</html>
