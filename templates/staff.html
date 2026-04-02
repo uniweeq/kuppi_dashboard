@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KUPPI — Staff Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #f0f2fb;
+      --sidebar-bg:    #ffffff;
+      --card-bg:       #ffffff;
+
+      --indigo:        #5B52E8;
+      --indigo-mid:    #7B74F0;
+      --indigo-light:  #edecfd;
+      --indigo-xlight: #f5f4ff;
+
+      --active-c:      #E8A020;
+      --active-bg:     #fff8ec;
+      --complete-c:    #22C07A;
+      --complete-bg:   #edfaf3;
+
+      --text:          #1a1a2e;
+      --text-2:        #4a4a6a;
+      --text-muted:    #9a9ab0;
+      --border:        #e4e6f0;
+      --border-light:  #f0f2f8;
+
+      --font-body: 'Nunito Sans', sans-serif;
+      --font-head: 'Barlow', sans-serif;
+      --radius: 14px;
+      --sidebar-w: 270px;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.25rem;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: .02em;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .25rem .5rem;
+      margin-bottom: .75rem;
+    }
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: var(--indigo);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .nav-section { margin-top: 1.75rem; }
+    .nav-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 .85rem;
+      margin-bottom: .5rem;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .75rem .85rem;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all .15s;
+      margin-bottom: 3px;
+    }
+    nav a .ico { font-size: 18px; width: 22px; text-align: center; opacity: .8; }
+    nav a:hover { background: var(--bg); color: var(--text); }
+    nav a.active { background: var(--indigo-light); color: var(--indigo); }
+    nav a.active .ico { opacity: 1; }
+
+    .sidebar-promo {
+      margin-top: auto;
+      background: linear-gradient(145deg, #5B52E8, #8B80F8);
+      border-radius: 14px;
+      padding: 1.35rem;
+      color: white;
+    }
+    .sidebar-promo strong {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: block;
+      margin-bottom: .4rem;
+    }
+    .sidebar-promo p { font-size: .88rem; opacity: .85; line-height: 1.5; }
+
+    /* ── Main ─────────────────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Topbar ───────────────────────────────────────────────────── */
+    .topbar {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 9;
+    }
+    .topbar-title {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: .01em;
+    }
+    .topbar-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Section header ───────────────────────────────────────────── */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      padding: 2rem 2.5rem 1rem;
+    }
+    .sec-head h2 {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+
+    /* ── Staff grid ────────────────────────────────────────────────── */
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      padding: 0 2.5rem 2.5rem;
+    }
+    @media (max-width: 1200px) { .staff-grid { grid-template-columns: 1fr; } }
+
+    /* ── Staff card ───────────────────────────────────────────────── */
+    .staff-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.8rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .staff-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(91,82,232,.1);
+    }
+
+    .staff-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: var(--indigo-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      flex-shrink: 0;
+    }
+
+    .staff-info { flex: 1; }
+    .staff-name {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: .4rem;
+    }
+    .staff-id {
+      font-size: .85rem;
+      color: var(--text-muted);
+      margin-bottom: .8rem;
+      font-weight: 600;
+    }
+
+    .staff-room {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .staff-room-label {
+      font-size: .8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .staff-room-num {
+      font-family: var(--font-head);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--active-c);
+      background: var(--active-bg);
+      padding: .3rem .7rem;
+      border-radius: 8px;
+    }
+
+    .staff-badge {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .25rem .6rem;
+      border-radius: 6px;
+      background: var(--complete-bg);
+      color: var(--complete-c);
+      margin-top: .5rem;
+    }
+
+    /* ── Language selector ────────────────────────────────────────── */
+    .staff-lang-section {
+      margin-top: 1.2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .staff-lang-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .6rem;
+      display: block;
+    }
+
+    .staff-lang-select {
+      width: 100%;
+      padding: .6rem .8rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .staff-lang-select:hover {
+      border-color: var(--indigo);
+      background: var(--indigo-xlight);
+    }
+
+    .staff-lang-select:focus {
+      outline: none;
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 3px var(--indigo-light);
+    }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">🌟</div>KUPPI
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <nav>
+        <a href="/dashboard"><span class="ico">📊</span> Dashboard</a>
+        <a href="/rooms"><span class="ico">🛏️</span> Rooms</a>
+      </nav>
+      <div class="nav-label">Manage</div>
+      <nav>
+        <a href="/staff" class="active"><span class="ico">👷</span> Staff</a>
+        <a href="/settings"><span class="ico">⚙️</span> Settings</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-promo">
+      <strong>Housekeeping QA</strong>
+      <p>Real-time room tracking for supervisors</p>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">Staff Management</div>
+        <div class="topbar-sub">Current housekeeping assignments</div>
+      </div>
+    </header>
+
+    <!-- Section header -->
+    <div class="sec-head">
+      <h2>Active Staff</h2>
+    </div>
+
+    <div class="staff-grid">
+      <div class="staff-card">
+        <div class="staff-avatar">👨‍💼</div>
+        <div class="staff-info">
+          <div class="staff-name">Maria Santos</div>
+          <div class="staff-id">ID: EMP-001</div>
+          <div class="staff-room">
+            <span class="staff-room-label">Currently cleaning:</span>
+            <span class="staff-room-num">301</span>
+          </div>
+          <div class="staff-badge">In Progress</div>
+          <div class="staff-lang-section">
+            <label class="staff-lang-label">Device Language</label>
+            <select class="staff-lang-select" data-staff-id="EMP-001" onchange="setDeviceLanguage(this)">
+              <option value="">Select language…</option>
+              <option value="en">English</option>
+              <option value="zh">中文 (Chinese)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="my">မြန်မာ (Burmese)</option>
+              <option value="th">ไทย (Thai)</option>
+              <option value="vi">Tiếng Việt (Vietnamese)</option>
+              <option value="tl">Tagalog</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="staff-card">
+        <div class="staff-avatar">👩‍💼</div>
+        <div class="staff-info">
+          <div class="staff-name">James Chen</div>
+          <div class="staff-id">ID: EMP-002</div>
+          <div class="staff-room">
+            <span class="staff-room-label">Currently cleaning:</span>
+            <span class="staff-room-num">305</span>
+          </div>
+          <div class="staff-badge">In Progress</div>
+          <div class="staff-lang-section">
+            <label class="staff-lang-label">Device Language</label>
+            <select class="staff-lang-select" data-staff-id="EMP-002" onchange="setDeviceLanguage(this)">
+              <option value="">Select language…</option>
+              <option value="en">English</option>
+              <option value="zh">中文 (Chinese)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="my">မြန်မာ (Burmese)</option>
+              <option value="th">ไทย (Thai)</option>
+              <option value="vi">Tiếng Việt (Vietnamese)</option>
+              <option value="tl">Tagalog</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="staff-card">
+        <div class="staff-avatar">👩‍💼</div>
+        <div class="staff-info">
+          <div class="staff-name">Ana Rodriguez</div>
+          <div class="staff-id">ID: EMP-003</div>
+          <div class="staff-room">
+            <span class="staff-room-label">Last completed:</span>
+            <span class="staff-room-num">203</span>
+          </div>
+          <div class="staff-badge" style="background: var(--complete-bg); color: var(--complete-c);">On Break</div>
+          <div class="staff-lang-section">
+            <label class="staff-lang-label">Device Language</label>
+            <select class="staff-lang-select" data-staff-id="EMP-003" onchange="setDeviceLanguage(this)">
+              <option value="">Select language…</option>
+              <option value="en">English</option>
+              <option value="zh">中文 (Chinese)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="my">မြန်မာ (Burmese)</option>
+              <option value="th">ไทย (Thai)</option>
+              <option value="vi">Tiếng Việt (Vietnamese)</option>
+              <option value="tl">Tagalog</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="staff-card">
+        <div class="staff-avatar">👨‍💼</div>
+        <div class="staff-info">
+          <div class="staff-name">David Okonkwo</div>
+          <div class="staff-id">ID: EMP-004</div>
+          <div class="staff-room">
+            <span class="staff-room-label">Currently cleaning:</span>
+            <span class="staff-room-num">402</span>
+          </div>
+          <div class="staff-badge">In Progress</div>
+          <div class="staff-lang-section">
+            <label class="staff-lang-label">Device Language</label>
+            <select class="staff-lang-select" data-staff-id="EMP-004" onchange="setDeviceLanguage(this)">
+              <option value="">Select language…</option>
+              <option value="en">English</option>
+              <option value="zh">中文 (Chinese)</option>
+              <option value="ta">தமிழ் (Tamil)</option>
+              <option value="bn">বাংলা (Bengali)</option>
+              <option value="my">မြန်မာ (Burmese)</option>
+              <option value="th">ไทย (Thai)</option>
+              <option value="vi">Tiếng Việt (Vietnamese)</option>
+              <option value="tl">Tagalog</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const LANGUAGE_MAP = {
+    en: 'English',
+    zh: '中文',
+    ta: 'தமிழ்',
+    bn: 'বাংলা',
+    my: 'မြန်မာ',
+    th: 'ไทย',
+    vi: 'Tiếng Việt',
+    tl: 'Tagalog'
+  };
+
+  async function setDeviceLanguage(selectElement) {
+    const staffId = selectElement.dataset.staffId;
+    const languageCode = selectElement.value;
+    
+    if (!languageCode) return;
+
+    const languageName = LANGUAGE_MAP[languageCode];
+    
+    try {
+      // Send language setting to backend
+      const response = await fetch('/api/set-staff-language', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          staff_id: staffId,
+          language_code: languageCode,
+          language_name: languageName
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        showNotification(`Language set to ${languageName} for ${staffId}`, 'success');
+      } else {
+        showNotification('Failed to set device language', 'error');
+        selectElement.value = '';
+      }
+    } catch (error) {
+      console.error('Error setting language:', error);
+      showNotification('Error setting device language', 'error');
+      selectElement.value = '';
+    }
+  }
+
+  function showNotification(message, type = 'info') {
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      top: 2rem;
+      right: 2rem;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      z-index: 1000;
+      animation: slideIn .3s ease;
+    `;
+    
+    if (type === 'success') {
+      toast.style.background = '#edfaf3';
+      toast.style.color = '#22C07A';
+    } else if (type === 'error') {
+      toast.style.background = '#fff0f0';
+      toast.style.color = '#E85252';
+    } else {
+      toast.style.background = '#edecfd';
+      toast.style.color = '#5B52E8';
+    }
+    
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.animation = 'slideOut .3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // Add keyframe animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+</script>
+
+</body>
+</html>

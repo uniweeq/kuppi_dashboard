@@ -4,331 +4,762 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KUPPI — Housekeeping Dashboard</title>
-
-  <!-- Supabase JS client (loaded from CDN) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@600;700;800&family=Nunito+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <style>
-    /* ── Reset & base ─────────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:           #0A0F2C;
-      --surface:      #121836;
-      --surface-2:    #1a2248;
-      --border:       #243060;
-      --text:         #e8eaf6;
-      --text-muted:   #8892b0;
+      --bg:            #f0f2fb;
+      --sidebar-bg:    #ffffff;
+      --card-bg:       #ffffff;
 
-      --pending:      #607d8b;
-      --active:       #ffa000;
-      --complete:     #2e7d32;
-      --incomplete:   #c62828;
+      --indigo:        #5B52E8;
+      --indigo-mid:    #7B74F0;
+      --indigo-light:  #edecfd;
+      --indigo-xlight: #f5f4ff;
 
-      --pending-bg:   rgba(96,125,139,.15);
-      --active-bg:    rgba(255,160,0,.15);
-      --complete-bg:  rgba(46,125,50,.15);
-      --incomplete-bg:rgba(198,40,40,.15);
+      --pending-c:     #9BAAB8;
+      --pending-bg:    #f3f6f9;
+      --active-c:      #E8A020;
+      --active-bg:     #fff8ec;
+      --complete-c:    #22C07A;
+      --complete-bg:   #edfaf3;
+      --incomplete-c:  #E85252;
+      --incomplete-bg: #fff0f0;
 
-      --tick:         #66bb6a;
-      --cross:        #ef5350;
-      --bar-track:    #243060;
+      --text:          #1a1a2e;
+      --text-2:        #4a4a6a;
+      --text-muted:    #9a9ab0;
+      --border:        #e4e6f0;
+      --border-light:  #f0f2f8;
 
-      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --radius: 12px;
-      --gap: 1.25rem;
+      --font-body: 'Nunito Sans', sans-serif;
+      --font-head: 'Barlow', sans-serif;
+      --radius: 14px;
+      --sidebar-w: 270px;
     }
 
     html, body {
       background: var(--bg);
       color: var(--text);
-      font-family: var(--font);
+      font-family: var(--font-body);
       min-height: 100vh;
+      font-size: 17px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Header ───────────────────────────────────────────────────────────── */
-    header {
-      background: var(--surface);
+    .shell { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ──────────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.25rem;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: .02em;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .25rem .5rem;
+      margin-bottom: .75rem;
+    }
+    .logo-mark {
+      width: 40px; height: 40px;
+      background: var(--indigo);
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: white;
+      flex-shrink: 0;
+    }
+    .logo em { color: var(--indigo); font-style: normal; }
+
+    .nav-section { margin-top: 1.75rem; }
+    .nav-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 0 .85rem;
+      margin-bottom: .5rem;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+      padding: .75rem .85rem;
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all .15s;
+      margin-bottom: 3px;
+    }
+    nav a .ico { font-size: 18px; width: 22px; text-align: center; opacity: .8; }
+    nav a:hover { background: var(--bg); color: var(--text); }
+    nav a.active { background: var(--indigo-light); color: var(--indigo); }
+    nav a.active .ico { opacity: 1; }
+
+    .sidebar-promo {
+      margin-top: auto;
+      background: linear-gradient(145deg, #5B52E8, #8B80F8);
+      border-radius: 14px;
+      padding: 1.35rem;
+      color: white;
+    }
+    .sidebar-promo strong {
+      font-family: var(--font-head);
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: block;
+      margin-bottom: .4rem;
+    }
+    .sidebar-promo p { font-size: .88rem; opacity: .85; line-height: 1.5; }
+
+    /* ── Main ─────────────────────────────────────────────────────── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    /* ── Topbar ───────────────────────────────────────────────────── */
+    .topbar {
+      background: white;
       border-bottom: 1px solid var(--border);
-      padding: 1rem 2rem;
+      padding: 1.25rem 2.5rem;
       display: flex;
       align-items: center;
       gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 9;
     }
-    header .logo { font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
-    header .logo span { color: var(--active); }
-    header .subtitle { color: var(--text-muted); font-size: .9rem; }
-    header nav {
-      display: flex;
-      gap: 1rem;
-      margin-left: 2rem;
+    .topbar-title {
+      font-family: var(--font-head);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: .01em;
     }
-    header nav a {
-      color: var(--text);
-      text-decoration: none;
-      padding: .5rem 1rem;
-      border-radius: 6px;
-      transition: background .2s;
-      font-size: .9rem;
-    }
-    header nav a:hover {
-      background: rgba(255,160,0,.1);
-    }
-    header nav a.active {
-      background: var(--active);
-      color: var(--bg);
-      font-weight: 600;
-    }
-    header .live-badge {
+    .topbar-sub { font-size: .9rem; color: var(--text-muted); margin-top: 2px; }
+
+    .live-pill {
       margin-left: auto;
       display: flex;
       align-items: center;
       gap: .5rem;
-      color: var(--tick);
-      font-size: .85rem;
-      font-weight: 600;
-    }
-    header .live-badge .dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--tick);
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
-    }
-
-    /* ── Stats bar ────────────────────────────────────────────────────────── */
-    .stats-bar {
-      display: flex;
-      gap: 1.5rem;
-      padding: 1rem 2rem;
-      flex-wrap: wrap;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-    .stat-chip {
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-      font-size: .85rem;
-    }
-    .stat-chip .count { font-weight: 700; font-size: 1.1rem; }
-    .stat-chip.pending  .count { color: var(--pending); }
-    .stat-chip.active   .count { color: var(--active); }
-    .stat-chip.complete .count { color: var(--tick); }
-    .stat-chip.incomplete .count { color: var(--cross); }
-
-    /* ── Main grid ────────────────────────────────────────────────────────── */
-    main {
-      padding: 2rem;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: var(--gap);
-    }
-    @media (max-width: 900px) {
-      main { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 560px) {
-      main { grid-template-columns: 1fr; padding: 1rem; }
-    }
-
-    /* ── Room tile ────────────────────────────────────────────────────────── */
-    .room-tile {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      gap: .75rem;
-      transition: transform .15s, box-shadow .15s;
-    }
-    .room-tile:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,.4);
-    }
-
-    /* status-specific left border accent */
-    .room-tile[data-status="pending"]    { border-left: 4px solid var(--pending); }
-    .room-tile[data-status="active"]     { border-left: 4px solid var(--active); background: var(--active-bg); }
-    .room-tile[data-status="complete"]   { border-left: 4px solid var(--complete); background: var(--complete-bg); }
-    .room-tile[data-status="incomplete"] { border-left: 4px solid var(--incomplete); background: var(--incomplete-bg); }
-
-    /* tile header row */
-    .tile-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .room-number {
-      font-size: 1.8rem;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    /* status badge */
-    .status-badge {
-      font-size: .72rem;
+      font-size: .88rem;
       font-weight: 700;
       letter-spacing: .06em;
-      text-transform: uppercase;
-      padding: .25rem .65rem;
+      color: var(--complete-c);
+      background: var(--complete-bg);
+      border: 1px solid #b6efd5;
+      padding: .45rem 1rem;
       border-radius: 999px;
     }
-    .status-badge.pending    { background: var(--pending-bg);    color: var(--pending); }
-    .status-badge.active     { background: var(--active-bg);     color: var(--active); }
-    .status-badge.complete   { background: var(--complete-bg);   color: var(--tick); }
-    .status-badge.incomplete { background: var(--incomplete-bg); color: var(--cross); }
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--complete-c);
+      animation: blink 1.6s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
 
-    /* progress bar */
-    .progress-wrap { display: flex; flex-direction: column; gap: .3rem; }
-    .progress-label {
+    /* ── Stat cards ───────────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      padding: 2rem 2.5rem 0;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      display: flex;
+      align-items: center;
+      gap: 1.1rem;
+    }
+    .stat-card[role="button"] {
+      transition: all .2s;
+    }
+    .stat-card[role="button"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(91,82,232,.1);
+      border-color: var(--indigo);
+    }
+    .stat-card.active-filter {
+      border: 2px solid var(--indigo);
+      background: var(--indigo-xlight);
+    }
+    .stat-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .stat-card.pending   .stat-icon { background: var(--pending-bg); }
+    .stat-card.active    .stat-icon { background: var(--active-bg);  }
+    .stat-card.complete  .stat-icon { background: var(--complete-bg); }
+    .stat-card.incomplete .stat-icon { background: var(--incomplete-bg); }
+
+    .stat-num {
+      font-family: var(--font-head);
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -.01em;
+    }
+    .stat-lbl { font-size: .88rem; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+    .stat-card.pending   .stat-num { color: var(--pending-c);   }
+    .stat-card.active    .stat-num { color: var(--active-c);    }
+    .stat-card.complete  .stat-num { color: var(--complete-c);  }
+    .stat-card.incomplete .stat-num { color: var(--incomplete-c); }
+
+    /* ── Section header ───────────────────────────────────────────── */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      gap: .9rem;
+      padding: 2rem 2.5rem 1rem;
+    }
+    .sec-head h2 {
+      font-family: var(--font-head);
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+    }
+    .sec-badge {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: white;
+      border: 1px solid var(--border);
+      padding: .3rem .85rem;
+      border-radius: 999px;
+    }
+
+    /* ── Room grid ────────────────────────────────────────────────── */
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      padding: 0 2.5rem 2.5rem;
+    }
+    @media (max-width: 1200px) { .room-grid { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 750px)  { .room-grid { grid-template-columns: 1fr; } }
+
+    /* ── Room card ────────────────────────────────────────────────── */
+    .room-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform .18s ease, box-shadow .18s ease;
+      animation: rise .3s ease both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .room-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(91,82,232,.1);
+    }
+
+    .card-accent { height: 4px; }
+    [data-status="pending"]    .card-accent { background: var(--pending-c); }
+    [data-status="active"]     .card-accent { background: var(--active-c); }
+    [data-status="complete"]   .card-accent { background: var(--complete-c); }
+    [data-status="incomplete"] .card-accent { background: var(--incomplete-c); }
+
+    .card-inner { padding: 1.4rem 1.5rem; }
+
+    .card-row1 {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+    }
+    .room-num {
+      font-family: var(--font-head);
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: .01em;
+    }
+    .room-sub { font-size: .88rem; color: var(--text-muted); margin-top: 5px; font-weight: 600; }
+
+    .status-tag {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      padding: .35rem .85rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    [data-status="pending"]    .status-tag { background: var(--pending-bg);    color: var(--pending-c); }
+    [data-status="active"]     .status-tag { background: var(--active-bg);     color: var(--active-c); }
+    [data-status="complete"]   .status-tag { background: var(--complete-bg);   color: var(--complete-c); }
+    [data-status="incomplete"] .status-tag { background: var(--incomplete-bg); color: var(--incomplete-c); }
+
+    /* progress */
+    .prog { margin-bottom: 1.2rem; }
+    .prog-top {
       display: flex;
       justify-content: space-between;
-      font-size: .78rem;
-      color: var(--text-muted);
+      margin-bottom: .45rem;
+      font-size: .86rem;
     }
-    .progress-track {
-      height: 6px;
+    .prog-top .pl { color: var(--text-muted); font-weight: 600; }
+    .prog-top .pn {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: .95rem;
+      color: var(--text);
+    }
+    .prog-track {
+      height: 8px;
+      background: var(--border-light);
       border-radius: 999px;
-      background: var(--bar-track);
       overflow: hidden;
     }
-    .progress-fill {
+    .prog-fill {
       height: 100%;
       border-radius: 999px;
-      transition: width .4s ease;
+      transition: width .5s cubic-bezier(.4,0,.2,1);
     }
-    [data-status="pending"]    .progress-fill { background: var(--pending); }
-    [data-status="active"]     .progress-fill { background: var(--active); }
-    [data-status="complete"]   .progress-fill { background: var(--tick); }
-    [data-status="incomplete"] .progress-fill { background: var(--cross); }
+    [data-status="pending"]    .prog-fill { background: var(--pending-c); }
+    [data-status="active"]     .prog-fill { background: var(--active-c); }
+    [data-status="complete"]   .prog-fill { background: var(--complete-c); }
+    [data-status="incomplete"] .prog-fill { background: var(--incomplete-c); }
 
-    /* zone lists */
+    /* zone checklist */
+    .zones-heading {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .7rem;
+    }
     .zones-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: .2rem .5rem;
-      font-size: .8rem;
+      gap: .4rem;
     }
     .zone-item {
       display: flex;
       align-items: center;
-      gap: .35rem;
+      gap: .55rem;
+      padding: .55rem .7rem;
+      border-radius: 8px;
+      font-size: .92rem;
+      font-weight: 600;
     }
-    .zone-item.done  { color: var(--tick); }
-    .zone-item.miss  { color: var(--text-muted); }
-    .zone-icon { font-size: .9rem; flex-shrink: 0; }
+    .zone-item.done { background: var(--complete-bg); color: #15a062; }
+    .zone-item.miss { background: var(--border-light); color: var(--text-muted); }
+    .zone-tick {
+      width: 20px; height: 20px;
+      border-radius: 5px;
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-weight: 700;
+    }
+    .zone-item.done .zone-tick { background: var(--complete-c); color: white; }
+    .zone-item.miss .zone-tick { background: var(--border); color: var(--text-muted); }
+    .zone-name { font-size: .9rem; }
 
-    /* start time */
-    .start-time {
-      font-size: .75rem;
+    /* card footer */
+    .card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .85rem 1.5rem;
+      border-top: 1px solid var(--border-light);
+      font-size: .86rem;
       color: var(--text-muted);
-      margin-top: .1rem;
+      font-weight: 600;
+      background: var(--indigo-xlight);
     }
+    .cf-count { color: var(--text-2); font-weight: 700; }
 
-    /* ── Empty state ──────────────────────────────────────────────────────── */
-    #empty-state {
-      grid-column: 1 / -1;
+    /* empty */
+    .empty-state {
+      grid-column: 1/-1;
       text-align: center;
-      padding: 4rem 2rem;
+      padding: 5rem 2rem;
       color: var(--text-muted);
+      font-size: 1rem;
     }
-    #empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
-    #empty-state p { font-size: 1rem; }
 
-    /* ── Toast notification ───────────────────────────────────────────────── */
-    #toast-container {
+    /* modal */
+    #modal-overlay {
+      display: none;
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0;
+      width: 32px; height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: background .2s;
+    }
+    .modal-close:hover { background: var(--border-light); }
+    .modal-section {
+      margin-bottom: 2rem;
+    }
+    .modal-section-label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .8rem;
+    }
+    .modal-status-line {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+    }
+    .modal-stat {
       display: flex;
       flex-direction: column;
+      gap: .3rem;
+    }
+    .modal-stat-val {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .modal-stat-lbl {
+      font-size: .8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .modal-zone-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+    }
+    .modal-zone-item {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: .75rem;
+      border-radius: 10px;
+      font-size: .95rem;
+      font-weight: 600;
+    }
+    .modal-zone-item.done {
+      background: var(--complete-bg);
+      color: var(--complete-c);
+    }
+    .modal-zone-item.miss {
+      background: var(--border-light);
+      color: var(--text-muted);
+    }
+    .modal-zone-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .modal-time {
+      font-size: .9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .modal-zone-detail {
+      margin-bottom: 1.2rem;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+    }
+    .modal-zone-detail-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .8rem;
+      font-weight: 700;
+      font-size: .95rem;
+    }
+    .modal-zone-detail-header .zone-check {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .modal-zone-detail-header.done {
+      color: var(--complete-c);
+    }
+    .modal-zone-detail-header.miss {
+      color: var(--text-muted);
+    }
+    .modal-items-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: .5rem;
-      z-index: 9999;
-      pointer-events: none;
+      font-size: .85rem;
+    }
+    .modal-item {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .4rem .6rem;
+      border-radius: 6px;
+      background: var(--border-light);
+      color: var(--text-muted);
+    }
+    .modal-item.checked {
+      background: var(--complete-bg);
+      color: var(--complete-c);
+    }
+    .modal-item-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    /* toast */
+    #toast-container {
+      position: fixed;
+      bottom: 1.75rem; right: 1.75rem;
+      display: flex; flex-direction: column; gap: .6rem;
+      z-index: 9999; pointer-events: none;
     }
     .toast {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: .65rem 1rem;
-      font-size: .83rem;
-      color: var(--text);
+      background: var(--text);
+      color: white;
+      border-radius: 10px;
+      padding: .8rem 1.25rem;
+      font-size: .95rem;
+      font-weight: 600;
       opacity: 0;
       transform: translateX(20px);
-      animation: toast-in .3s forwards, toast-out .3s 3.7s forwards;
+      animation: tin .3s forwards, tout .3s 3.7s forwards;
       max-width: 300px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
     }
-    @keyframes toast-in  { to { opacity: 1; transform: translateX(0); } }
-    @keyframes toast-out { to { opacity: 0; transform: translateX(20px); } }
+    @keyframes tin  { to { opacity: 1; transform: translateX(0); } }
+    @keyframes tout { to { opacity: 0; transform: translateX(20px); } }
+
+    @media (max-width: 640px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
+<div class="shell">
 
-<header>
-  <div class="logo">KU<span>PPI</span></div>
-  <div class="subtitle">Housekeeping Quality Assurance</div>
-  <nav>
-    <a href="/dashboard" class="active">Dashboard</a>
-    <a href="/rooms">Rooms</a>
-  </nav>
-  <div class="live-badge">
-    <div class="dot"></div>
-    LIVE
-  </div>
-</header>
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">🌟</div>KUPPI
+    </div>
 
-<div class="stats-bar" id="stats-bar">
-  <div class="stat-chip pending">
-    <span class="count" id="cnt-pending">—</span> Pending
-  </div>
-  <div class="stat-chip active">
-    <span class="count" id="cnt-active">—</span> Active
-  </div>
-  <div class="stat-chip complete">
-    <span class="count" id="cnt-complete">—</span> Complete
-  </div>
-  <div class="stat-chip incomplete">
-    <span class="count" id="cnt-incomplete">—</span> Incomplete
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <nav>
+        <a href="/dashboard" class="active"><span class="ico">📊</span> Dashboard</a>
+        <a href="/rooms"><span class="ico">🛏️</span> Rooms</a>
+      </nav>
+      <div class="nav-label">Manage</div>
+      <nav>
+        <a href="/staff"><span class="ico">👷</span> Staff</a>
+        <a href="/settings"><span class="ico">⚙️</span> Settings</a>
+      </nav>
+    </div>
+
+    <div class="sidebar-promo">
+      <strong>Housekeeping QA</strong>
+      <p>Real-time room tracking for supervisors</p>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">Room Overview</div>
+        <div class="topbar-sub">Today's cleaning progress</div>
+      </div>
+      <div class="live-pill">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </header>
+
+    <!-- Stat cards -->
+    <div class="stats-row">
+      <div class="stat-card active" role="button" onclick="filterByStatus('active')" data-status="active" style="cursor: pointer;">
+        <div class="stat-icon">🧹</div>
+        <div>
+          <div class="stat-num" id="cnt-active">—</div>
+          <div class="stat-lbl">In Progress</div>
+        </div>
+      </div>
+      <div class="stat-card complete" role="button" onclick="filterByStatus('complete')" data-status="complete" style="cursor: pointer;">
+        <div class="stat-icon">✅</div>
+        <div>
+          <div class="stat-num" id="cnt-complete">—</div>
+          <div class="stat-lbl">Complete</div>
+        </div>
+      </div>
+      <div class="stat-card incomplete" role="button" onclick="filterByStatus('incomplete')" data-status="incomplete" style="cursor: pointer;">
+        <div class="stat-icon">⚠️</div>
+        <div>
+          <div class="stat-num" id="cnt-incomplete">—</div>
+          <div class="stat-lbl">Incomplete</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section header -->
+    <div class="sec-head">
+      <h2>All Rooms</h2>
+      <div class="sec-badge" id="room-count-label">Loading…</div>
+    </div>
+
+    <div class="room-grid" id="grid"></div>
   </div>
 </div>
 
-<main id="grid">
-  <div id="empty-state">
-    <div class="icon">🏨</div>
-    <p>Loading room data…</p>
+<div id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-room-title">Room —</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label">Status & Progress</div>
+      <div class="modal-status-line">
+        <div class="modal-stat">
+          <div class="modal-stat-val" id="modal-percent">—%</div>
+          <div class="modal-stat-lbl">Complete</div>
+        </div>
+        <div class="modal-stat">
+          <div class="modal-stat-val" id="modal-zones-done">—</div>
+          <div class="modal-stat-lbl">of 6 Zones</div>
+        </div>
+        <div style="flex:1; display:flex; align-items:flex-end;">
+          <div class="status-tag" id="modal-status-tag">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label">Zone Checklist</div>
+      <div class="modal-zone-list" id="modal-zones"></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label">Detailed Items</div>
+      <div id="modal-items-detail"></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label">Session Timeline</div>
+      <div class="modal-time" id="modal-time-info">—</div>
+    </div>
   </div>
-</main>
+</div>
 
 <div id="toast-container"></div>
 
 <script>
-  // ── Configuration injected by Flask ───────────────────────────────────────
+  // ── Config (injected by Flask) ─────────────────────────────────────
   const SUPABASE_URL = {{ supabase_url | tojson }};
   const SUPABASE_KEY = {{ supabase_key | tojson }};
 
   const ZONES = ["Toilet", "Wardrobe", "Study Desk", "Bed", "Curtain", "Drinks Bar"];
   const TOTAL  = ZONES.length;
 
-  // ── Supabase client ────────────────────────────────────────────────────────
+  const ZONE_ICONS = {
+    "Toilet":      "🚿",
+    "Wardrobe":    "🚪",
+    "Study Desk":  "🖥️",
+    "Bed":         "🛏️",
+    "Curtain":     "🪟",
+    "Drinks Bar":  "☕"
+  };
+
+  const ZONE_ITEMS = {
+    "Toilet":      ["Toilet", "Sink", "Soap", "Tissues", "Amenities", "Mirror", "Shower", "Bathtub", "Towels", "Floor"],
+    "Wardrobe":    ["Hangers", "Iron", "Safe", "Laundry Bag", "Slippers"],
+    "Study Desk":  ["Thermostat", "Mirror", "Plugs", "Decor", "Drawers", "Chair"],
+    "Bed":         ["Bed", "Table", "Drawers", "Lighting", "Controls", "Writing Pad"],
+    "Curtain":     ["Seating", "Window", "TV", "Tables", "Drawers", "Catalogue", "Decor", "Plugs"],
+    "Drinks Bar":  ["Coffee", "Refreshments", "Kettle", "Fridge", "Counter", "Floor"]
+  };
+
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let roomState = {};   // room_number -> { status, zones_done, scanned, missing, start_time }
+  let roomState = {};
+  let activeFilter = null;
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   function fmt(iso) {
     if (!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  function statusLabel(s) {
-    return s.charAt(0).toUpperCase() + s.slice(1);
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   function showToast(msg) {
@@ -339,101 +770,216 @@
     setTimeout(() => el.remove(), 4200);
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-  function updateStats() {
-    const counts = { pending: 0, active: 0, complete: 0, incomplete: 0 };
-    Object.values(roomState).forEach(r => {
-      const k = r.status || 'pending';
-      counts[k] = (counts[k] || 0) + 1;
-    });
-    document.getElementById('cnt-pending').textContent   = counts.pending;
-    document.getElementById('cnt-active').textContent    = counts.active;
-    document.getElementById('cnt-complete').textContent  = counts.complete;
-    document.getElementById('cnt-incomplete').textContent = counts.incomplete;
-  }
+  function openModal(room) {
+    const data = roomState[room];
+    if (!data) return;
 
-  function renderTile(room) {
-    const data   = roomState[room];
-    const pct    = Math.round((data.zones_done / TOTAL) * 100);
     const status = data.status || 'pending';
+    const pct = Math.round((data.zones_done / TOTAL) * 100);
+    const scanned = new Set(data.scanned || []);
 
-    const scannedSet = new Set(data.scanned || []);
+    document.getElementById('modal-room-title').textContent = `Room ${room}`;
+    document.getElementById('modal-percent').textContent = `${pct}%`;
+    document.getElementById('modal-zones-done').textContent = data.zones_done;
+    document.getElementById('modal-status-tag').textContent = statusLabel(status);
+    document.getElementById('modal-status-tag').className = `status-tag ${status}`;
 
     const zonesHtml = ZONES.map(z => {
-      const done = scannedSet.has(z);
+      const done = scanned.has(z);
+      const icon = ZONE_ICONS[z] || '·';
+      return `<div class="modal-zone-item ${done ? 'done' : 'miss'}">
+        <span class="modal-zone-icon">${done ? '✓' : '○'}</span>
+        <span>${icon} ${z}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('modal-zones').innerHTML = zonesHtml;
+
+    // Detailed items per zone
+    const itemsHtml = ZONES.map(zone => {
+      const done = scanned.has(zone);
+      const items = ZONE_ITEMS[zone] || [];
+      const itemsListHtml = items.map(item => `
+        <div class="modal-item ${done ? 'checked' : ''}">
+          <span class="modal-item-icon">${done ? '✓' : '·'}</span>
+          <span>${item}</span>
+        </div>
+      `).join('');
+      
+      return `
+        <div class="modal-zone-detail">
+          <div class="modal-zone-detail-header ${done ? 'done' : 'miss'}">
+            <span class="zone-check">${done ? '✓' : '○'}</span>
+            <span>${ZONE_ICONS[zone]} ${zone}</span>
+          </div>
+          <div class="modal-items-list">${itemsListHtml}</div>
+        </div>
+      `;
+    }).join('');
+    document.getElementById('modal-items-detail').innerHTML = itemsHtml;
+
+    const timeInfo = status === 'complete' && data.start_time && data.end_time
+      ? (() => {
+          try {
+            const start = new Date(data.start_time);
+            const end = new Date(data.end_time);
+            const durationMinutes = Math.round((end - start) / 60000);
+            return `⏱️ Cleaning took ${durationMinutes} minutes`;
+          } catch (e) {
+            return `Started at ${fmt(data.start_time)}`;
+          }
+        })()
+      : data.start_time
+      ? `Started at ${fmt(data.start_time)}`
+      : 'Not started yet';
+    document.getElementById('modal-time-info').textContent = timeInfo;
+
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  function updateStats() {
+    const c = { pending: 0, active: 0, complete: 0, incomplete: 0 };
+    Object.values(roomState).forEach(r => { c[r.status || 'pending']++; });
+    document.getElementById('cnt-active').textContent     = c.active;
+    document.getElementById('cnt-complete').textContent   = c.complete;
+    document.getElementById('cnt-incomplete').textContent = c.incomplete;
+    const total = Object.keys(roomState).length;
+    document.getElementById('room-count-label').textContent =
+      total + ' room' + (total !== 1 ? 's' : '');
+  }
+
+  function filterByStatus(status) {
+    if (activeFilter === status) {
+      activeFilter = null;
+    } else {
+      activeFilter = status;
+    }
+    
+    // Update filter button styling
+    document.querySelectorAll('.stat-card[role="button"]').forEach(card => {
+      card.classList.remove('active-filter');
+    });
+    if (activeFilter) {
+      document.querySelector(`.stat-card[data-status="${activeFilter}"]`).classList.add('active-filter');
+    }
+    
+    renderGrid();
+  }
+
+  function statusLabel(s) {
+    const map = { pending: 'Pending', active: 'In Progress', complete: 'Complete', incomplete: 'Incomplete' };
+    return map[s] || s;
+  }
+
+  function renderCard(room) {
+    const data    = roomState[room];
+    const status  = data.status || 'pending';
+    const pct     = Math.round((data.zones_done / TOTAL) * 100);
+    const scanned = new Set(data.scanned || []);
+
+    const zonesHtml = ZONES.map(z => {
+      const done = scanned.has(z);
+      const icon = ZONE_ICONS[z] || '·';
       return `<div class="zone-item ${done ? 'done' : 'miss'}">
-        <span class="zone-icon">${done ? '✅' : '❌'}</span>
-        <span>${z}</span>
+        <div class="zone-tick">${done ? '✓' : '–'}</div>
+        <span class="zone-name">${icon} ${z}</span>
       </div>`;
     }).join('');
 
-    const startHtml = data.start_time
-      ? `<div class="start-time">Started ${fmt(data.start_time)}</div>`
-      : '';
+    let startStr = '';
+    if (status === 'complete' && data.start_time && data.end_time) {
+      // Calculate duration for completed rooms
+      try {
+        const start = new Date(data.start_time);
+        const end = new Date(data.end_time);
+        const durationMinutes = Math.round((end - start) / 60000);
+        startStr = `⏱️ Took ${durationMinutes} min`;
+      } catch (e) {
+        startStr = `🕐 Started ${fmt(data.start_time)}`;
+      }
+    } else {
+      startStr = data.start_time
+        ? `🕐 Started ${fmt(data.start_time)}`
+        : `⏳ Not started`;
+    }
 
     return `
-      <div class="room-tile" id="tile-${room}" data-status="${status}">
-        <div class="tile-header">
-          <div class="room-number">Room ${room}</div>
-          <div class="status-badge ${status}">${statusLabel(status)}</div>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-label">
-            <span>Zones cleaned</span>
-            <span>${data.zones_done} / ${TOTAL}</span>
+      <div class="room-card" id="tile-${room}" data-status="${status}" role="button" onclick="openModal('${room}')" style="cursor: pointer;">
+        <div class="card-accent"></div>
+        <div class="card-inner">
+          <div class="card-row1">
+            <div>
+              <div class="room-num">Room ${room}</div>
+              <div class="room-sub">${data.zones_done} of ${TOTAL} zones done</div>
+            </div>
+            <div class="status-tag">${statusLabel(status)}</div>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${pct}%"></div>
+
+          <div class="prog">
+            <div class="prog-top">
+              <span class="pl">Progress</span>
+              <span class="pn">${pct}%</span>
+            </div>
+            <div class="prog-track">
+              <div class="prog-fill" style="width:${pct}%"></div>
+            </div>
           </div>
+
+          <div class="zones-heading">Zone Checklist</div>
+          <div class="zones-grid">${zonesHtml}</div>
         </div>
-        <div class="zones-grid">${zonesHtml}</div>
-        ${startHtml}
+        <div class="card-foot">
+          <span>${startStr}</span>
+          <span><span class="cf-count">${data.zones_done}/${TOTAL}</span> zones</span>
+        </div>
       </div>`;
   }
 
   function renderGrid() {
-    const grid = document.getElementById('grid');
-    const rooms = Object.keys(roomState).sort((a, b) =>
-      // Natural (numeric-aware) sort so '10' comes after '9', not after '1'
+    const grid  = document.getElementById('grid');
+    let rooms = Object.keys(roomState).sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true }));
 
+    // Apply active filter
+    if (activeFilter) {
+      rooms = rooms.filter(room => (roomState[room].status || 'pending') === activeFilter);
+    }
+
+    // Clear ALL content (cards and messages) first
+    grid.innerHTML = '';
+
     if (rooms.length === 0) {
-      grid.innerHTML = `<div id="empty-state">
-        <div class="icon">🏨</div>
-        <p>No rooms found. Add rooms to the <code>rooms</code> table in Supabase.</p>
-      </div>`;
+      // Show message only if we have an active filter with no rooms
+      if (activeFilter) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-state';
+        const statusName = statusLabel(activeFilter);
+        emptyDiv.innerHTML = `<div class="e-icon">🏨</div>
+          <p>No rooms with status "${statusName}" found.</p>`;
+        grid.appendChild(emptyDiv);
+      }
       return;
     }
 
-    // Preserve existing tiles and do granular updates when possible
-    rooms.forEach(room => {
-      const existing = document.getElementById(`tile-${room}`);
-      const html = renderTile(room);
-      if (existing) {
-        existing.outerHTML = html;
-      } else {
-        grid.insertAdjacentHTML('beforeend', html);
-      }
-    });
-
-    // Remove tiles for rooms that no longer exist
-    grid.querySelectorAll('.room-tile').forEach(el => {
-      const r = el.id.replace('tile-', '');
-      if (!roomState[r]) el.remove();
+    // Add only filtered rooms
+    rooms.forEach((room, i) => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = renderCard(room);
+      const card = tmp.firstElementChild;
+      card.style.animationDelay = `${i * 40}ms`;
+      grid.appendChild(card);
     });
   }
 
-  // ── Fetch full status from REST API ────────────────────────────────────────
   async function loadStatus() {
     try {
       const res = await fetch('/api/status');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
-      data.forEach(room => {
-        roomState[room.room] = room;
-      });
-
+      data.forEach(room => { roomState[room.room] = room; });
       renderGrid();
       updateStats();
     } catch (err) {
@@ -441,44 +987,31 @@
     }
   }
 
-  // ── Supabase real-time subscription ────────────────────────────────────────
   function subscribeRealtime() {
-    // Listen for new scans — refresh the affected room tile immediately
     db.channel('kuppi-realtime')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'scans' },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'scans' },
+        async () => { await loadStatus(); showToast('📡 New scan received'); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' },
         async (payload) => {
-          console.log('Scan event:', payload);
-          // Re-fetch full status to get updated zone lists
-          await loadStatus();
-          showToast('📡 New scan received');
-        })
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'sessions' },
-        async (payload) => {
-          console.log('Session event:', payload);
-          const row = payload.new || {};
+          const row  = payload.new || {};
           const verb = payload.eventType === 'INSERT' ? 'opened' :
                        (row.status === 'complete' ? 'completed ✓' :
                         row.status === 'incomplete' ? 'incomplete ✗' : 'updated');
           await loadStatus();
           if (row.room) showToast(`Room ${row.room} session ${verb}`);
         })
-      .subscribe(status => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Real-time channel connected');
-        }
-      });
+      .subscribe(s => { if (s === 'SUBSCRIBED') console.log('Realtime connected'); });
   }
 
-  // ── Initialise ─────────────────────────────────────────────────────────────
   (async () => {
     await loadStatus();
     subscribeRealtime();
-
-    // Fallback poll every 30 s in case the real-time WebSocket is unavailable
-    // (e.g. network restrictions, Supabase plan limits, or initial load race).
     setInterval(loadStatus, 30_000);
+
+    // Close modal when clicking outside
+    document.getElementById('modal-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-overlay') closeModal();
+    });
   })();
 </script>
 
