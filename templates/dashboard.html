@@ -45,9 +45,21 @@
 
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 1.25rem;
       padding: 2rem 2.5rem 0;
+    }
+
+    @media (max-width: 1400px) {
+      .stats-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .stat-card {
@@ -164,6 +176,24 @@
       border: 1px solid var(--border);
       padding: .3rem .85rem;
       border-radius: 999px;
+    }
+
+    .clear-filters-btn {
+      margin-left: auto;
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--indigo);
+      background: white;
+      border: 1px solid var(--indigo);
+      padding: .4rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .clear-filters-btn:hover {
+      background: var(--indigo);
+      color: white;
     }
 
     /* ── Room grid ────────────────────────────────────────────────── */
@@ -654,12 +684,20 @@
 {% block content %}
       <!-- Stat cards -->
       <div class="stats-row">
+        <div class="stat-card not_cleaned" role="button" onclick="filterByStatus('not_cleaned')" data-status="not_cleaned"
+          style="cursor: pointer;">
+          <div class="stat-icon">📋</div>
+          <div>
+            <div class="stat-num" id="cnt-not_cleaned">—</div>
+            <div class="stat-lbl">Not Cleaned</div>
+          </div>
+        </div>
         <div class="stat-card cleaning" role="button" onclick="filterByStatus('cleaning')" data-status="cleaning"
           style="cursor: pointer;">
           <div class="stat-icon">🧹</div>
           <div>
             <div class="stat-num" id="cnt-cleaning">—</div>
-            <div class="stat-lbl">Cleaning</div>
+            <div class="stat-lbl">In Progress</div>
           </div>
         </div>
         <div class="stat-card awaiting_approval" role="button" onclick="filterByStatus('awaiting_approval')" data-status="awaiting_approval"
@@ -668,6 +706,14 @@
           <div>
             <div class="stat-num" id="cnt-awaiting_approval">—</div>
             <div class="stat-lbl">Awaiting Approval</div>
+          </div>
+        </div>
+        <div class="stat-card incomplete" role="button" onclick="filterByStatus('incomplete')" data-status="incomplete"
+          style="cursor: pointer;">
+          <div class="stat-icon">⚠️</div>
+          <div>
+            <div class="stat-num" id="cnt-incomplete">—</div>
+            <div class="stat-lbl">Cleaning</div>
           </div>
         </div>
         <div class="stat-card available" role="button" onclick="filterByStatus('available')" data-status="available"
@@ -684,6 +730,9 @@
       <div class="sec-head">
         <h2>All Rooms</h2>
         <div class="sec-badge" id="room-count-label">Loading…</div>
+        <button id="clear-filters-btn" class="clear-filters-btn" onclick="clearFilters()" style="display: none;">
+          ✕ Clear Filters
+        </button>
       </div>
 
       <div class="room-grid" id="grid"></div>
@@ -851,8 +900,10 @@
     function updateStats() {
       const c = { not_cleaned: 0, cleaning: 0, awaiting_approval: 0, available: 0, incomplete: 0 };
       Object.values(roomState).forEach(r => { c[r.status || 'not_cleaned']++; });
+      document.getElementById('cnt-not_cleaned').textContent = c.not_cleaned;
       document.getElementById('cnt-cleaning').textContent = c.cleaning;
       document.getElementById('cnt-awaiting_approval').textContent = c.awaiting_approval;
+      document.getElementById('cnt-incomplete').textContent = c.incomplete;
       document.getElementById('cnt-available').textContent = c.available;
       const total = Object.keys(roomState).length;
       document.getElementById('room-count-label').textContent =
@@ -874,16 +925,33 @@
         document.querySelector(`.stat-card[data-status="${activeFilter}"]`).classList.add('active-filter');
       }
 
+      // Show/hide clear filters button
+      const clearBtn = document.getElementById('clear-filters-btn');
+      if (activeFilter) {
+        clearBtn.style.display = 'block';
+      } else {
+        clearBtn.style.display = 'none';
+      }
+
+      renderGrid();
+    }
+
+    function clearFilters() {
+      activeFilter = null;
+      document.querySelectorAll('.stat-card[role="button"]').forEach(card => {
+        card.classList.remove('active-filter');
+      });
+      document.getElementById('clear-filters-btn').style.display = 'none';
       renderGrid();
     }
 
     function statusLabel(s) {
       const map = {
         not_cleaned: 'Not Cleaned',
-        cleaning: 'Cleaning',
+        cleaning: 'In Progress',
         awaiting_approval: 'Awaiting Approval',
         available: 'Available',
-        incomplete: 'Incomplete'
+        incomplete: 'Cleaning'
       };
       return map[s] || s;
     }
