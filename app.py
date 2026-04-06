@@ -894,68 +894,70 @@ def test123():
 def populate_test_data():
     """
     Development endpoint: Create fake test data for dashboard visualization.
-    Creates 6 test rooms with sessions and scans at various completion levels.
+    Creates test rooms with sessions and scans representing all statuses.
     """
     try:
         import uuid
         from datetime import datetime as dt, timedelta
-        
-        # Test data structure
+
+        # Test data structure - one room for each status
         test_data = [
+            {
+                "room": "301",
+                "card_uid": "FAKE-JOHN",
+                "status": "available",
+                "hours_ago": 3,
+                "duration_hours": 0.35,  # 21 minutes
+                "scans": ZONES
+            },
             {
                 "room": "302",
                 "card_uid": "FAKE-MARIA",
-                "status": "complete",
-                "hours_ago": 2.5,
-                "duration_hours": 0.3,  # 18 minutes
+                "status": "awaiting_approval",
+                "hours_ago": 1.5,
+                "duration_hours": 0.25,  # 15 minutes
                 "scans": ZONES
             },
             {
                 "room": "303",
                 "card_uid": "FAKE-JAMES",
-                "status": "complete",
-                "hours_ago": 1.75,
-                "duration_hours": 0.37,  # 22 minutes
-                "scans": ZONES
+                "status": "cleaning",
+                "minutes_ago": 12,
+                "scans": ["Toilet", "Wardrobe", "Bed"]
             },
             {
                 "room": "304",
                 "card_uid": "FAKE-ANA",
                 "status": "incomplete",
-                "minutes_ago": 18,
-                "scans": ["Toilet", "Wardrobe", "Bed"]
-            },
-            {
-                "room": "305",
-                "card_uid": "FAKE-DAVID",
-                "status": "active",
-                "minutes_ago": 5,
-                "scans": ["Toilet"]
+                "hours_ago": 2,
+                "duration_hours": 0.3,  # 18 minutes
+                "scans": ["Toilet", "Wardrobe", "Study Desk"]
             },
             {
                 "room": "401",
                 "card_uid": "FAKE-CARLOS",
-                "status": "complete",
-                "hours_ago": 3,
-                "duration_hours": 0.5,  # 30 minutes
+                "status": "available",
+                "hours_ago": 4,
+                "duration_hours": 0.4,  # 24 minutes
                 "scans": ZONES
             },
             {
                 "room": "402",
                 "card_uid": "FAKE-SOFIA",
                 "status": "incomplete",
-                "minutes_ago": 8,
+                "hours_ago": 1,
+                "duration_hours": 0.2,  # 12 minutes
                 "scans": ["Wardrobe", "Study Desk"]
             },
         ]
-        
+
         now = dt.now(timezone.utc)
         created_count = 0
-        
+
         for room_data in test_data:
             try:
                 room_num = room_data["room"]
-                
+
                 # Create or get room
                 try:
                     supabase.table("rooms").insert({
@@ -967,7 +969,7 @@ def populate_test_data():
                     }).execute()
                 except:
                     pass  # Room already exists
-                
+
                 # Calculate start/end times
                 if "hours_ago" in room_data:
                     start_time = now - timedelta(hours=room_data["hours_ago"])
@@ -978,7 +980,7 @@ def populate_test_data():
                 else:
                     start_time = now - timedelta(minutes=room_data.get("minutes_ago", 5))
                     end_time = None
-                
+
                 # Create session
                 session_data = {
                     "card_uid": room_data["card_uid"],
@@ -988,13 +990,16 @@ def populate_test_data():
                 }
                 if end_time:
                     session_data["end_time"] = end_time.isoformat()
-                
+                    # Calculate duration in minutes for completed sessions
+                    duration_mins = int((end_time - start_time).total_seconds() / 60)
+                    session_data["duration_mins"] = duration_mins
+
                 session_resp = supabase.table("sessions").insert(session_data).execute()
                 if not session_resp.data:
                     continue
-                
+
                 session_id = session_resp.data[0]["id"]
-                
+
                 # Create scans
                 for i, zone in enumerate(room_data["scans"]):
                     try:
@@ -1005,21 +1010,21 @@ def populate_test_data():
                         }).execute()
                     except Exception as e:
                         _log("TEST_DATA_SCAN_ERROR", f"Failed to create scan: {e}")
-                
+
                 created_count += 1
-                
+
             except Exception as e:
                 _log("TEST_DATA_ROOM_ERROR", f"Failed to create room data: {e}")
                 continue
-        
+
         _log("TEST_DATA", f"Created {created_count} test rooms with sessions")
-        
+
         return jsonify({
             "success": True,
-            "message": f"Created test data for {created_count} rooms",
+            "message": f"Created test data for {created_count} rooms with all statuses",
             "rooms_created": created_count
         }), 200
-        
+
     except Exception as e:
         _log("TEST_DATA_ERROR", f"Failed to populate test data: {str(e)}")
         return jsonify({"error": str(e), "type": type(e).__name__}), 500
