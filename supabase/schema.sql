@@ -8,6 +8,7 @@
 --    One row per cleaning session.  Opened when staff taps door reader,
 --    closed (with status cleaning/awaiting_approval/available/incomplete) when they leave.
 --    Status flow: not_cleaned -> cleaning -> awaiting_approval -> available
+--    Note: "not_cleaned" is a display-only status shown when no session exists.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sessions (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
