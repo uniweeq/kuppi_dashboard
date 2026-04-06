@@ -86,15 +86,19 @@
       flex-shrink: 0;
     }
 
-    .stat-card.pending .stat-icon {
+    .stat-card.not_cleaned .stat-icon {
       background: var(--pending-bg);
     }
 
-    .stat-card.active .stat-icon {
+    .stat-card.cleaning .stat-icon {
       background: var(--active-bg);
     }
 
-    .stat-card.complete .stat-icon {
+    .stat-card.awaiting_approval .stat-icon {
+      background: #fff4e5;
+    }
+
+    .stat-card.available .stat-icon {
       background: var(--complete-bg);
     }
 
@@ -117,15 +121,19 @@
       margin-top: 4px;
     }
 
-    .stat-card.pending .stat-num {
+    .stat-card.not_cleaned .stat-num {
       color: var(--pending-c);
     }
 
-    .stat-card.active .stat-num {
+    .stat-card.cleaning .stat-num {
       color: var(--active-c);
     }
 
-    .stat-card.complete .stat-num {
+    .stat-card.awaiting_approval .stat-num {
+      color: #f59e0b;
+    }
+
+    .stat-card.available .stat-num {
       color: var(--complete-c);
     }
 
@@ -209,15 +217,19 @@
       height: 4px;
     }
 
-    [data-status="pending"] .card-accent {
+    [data-status="not_cleaned"] .card-accent {
       background: var(--pending-c);
     }
 
-    [data-status="active"] .card-accent {
+    [data-status="cleaning"] .card-accent {
       background: var(--active-c);
     }
 
-    [data-status="complete"] .card-accent {
+    [data-status="awaiting_approval"] .card-accent {
+      background: #f59e0b;
+    }
+
+    [data-status="available"] .card-accent {
       background: var(--complete-c);
     }
 
@@ -261,17 +273,22 @@
       white-space: nowrap;
     }
 
-    [data-status="pending"] .status-tag {
+    [data-status="not_cleaned"] .status-tag {
       background: var(--pending-bg);
       color: var(--pending-c);
     }
 
-    [data-status="active"] .status-tag {
+    [data-status="cleaning"] .status-tag {
       background: var(--active-bg);
       color: var(--active-c);
     }
 
-    [data-status="complete"] .status-tag {
+    [data-status="awaiting_approval"] .status-tag {
+      background: #fff4e5;
+      color: #f59e0b;
+    }
+
+    [data-status="available"] .status-tag {
       background: var(--complete-bg);
       color: var(--complete-c);
     }
@@ -318,15 +335,19 @@
       transition: width .5s cubic-bezier(.4, 0, .2, 1);
     }
 
-    [data-status="pending"] .prog-fill {
+    [data-status="not_cleaned"] .prog-fill {
       background: var(--pending-c);
     }
 
-    [data-status="active"] .prog-fill {
+    [data-status="cleaning"] .prog-fill {
       background: var(--active-c);
     }
 
-    [data-status="complete"] .prog-fill {
+    [data-status="awaiting_approval"] .prog-fill {
+      background: #f59e0b;
+    }
+
+    [data-status="available"] .prog-fill {
       background: var(--complete-c);
     }
 
@@ -633,28 +654,28 @@
 {% block content %}
       <!-- Stat cards -->
       <div class="stats-row">
-        <div class="stat-card active" role="button" onclick="filterByStatus('active')" data-status="active"
+        <div class="stat-card cleaning" role="button" onclick="filterByStatus('cleaning')" data-status="cleaning"
           style="cursor: pointer;">
           <div class="stat-icon">🧹</div>
           <div>
-            <div class="stat-num" id="cnt-active">—</div>
-            <div class="stat-lbl">In Progress</div>
+            <div class="stat-num" id="cnt-cleaning">—</div>
+            <div class="stat-lbl">Cleaning</div>
           </div>
         </div>
-        <div class="stat-card complete" role="button" onclick="filterByStatus('complete')" data-status="complete"
+        <div class="stat-card awaiting_approval" role="button" onclick="filterByStatus('awaiting_approval')" data-status="awaiting_approval"
+          style="cursor: pointer;">
+          <div class="stat-icon">⏳</div>
+          <div>
+            <div class="stat-num" id="cnt-awaiting_approval">—</div>
+            <div class="stat-lbl">Awaiting Approval</div>
+          </div>
+        </div>
+        <div class="stat-card available" role="button" onclick="filterByStatus('available')" data-status="available"
           style="cursor: pointer;">
           <div class="stat-icon">✅</div>
           <div>
-            <div class="stat-num" id="cnt-complete">—</div>
-            <div class="stat-lbl">Complete</div>
-          </div>
-        </div>
-        <div class="stat-card incomplete" role="button" onclick="filterByStatus('incomplete')" data-status="incomplete"
-          style="cursor: pointer;">
-          <div class="stat-icon">⚠️</div>
-          <div>
-            <div class="stat-num" id="cnt-incomplete">—</div>
-            <div class="stat-lbl">Incomplete</div>
+            <div class="stat-num" id="cnt-available">—</div>
+            <div class="stat-lbl">Available</div>
           </div>
         </div>
       </div>
@@ -804,7 +825,7 @@
       }).join('');
       document.getElementById('modal-items-detail').innerHTML = itemsHtml;
 
-      const timeInfo = status === 'complete' && data.start_time && data.end_time
+      const timeInfo = (status === 'awaiting_approval' || status === 'available') && data.start_time && data.end_time
         ? (() => {
           try {
             const start = new Date(data.start_time);
@@ -828,11 +849,11 @@
     }
 
     function updateStats() {
-      const c = { pending: 0, active: 0, complete: 0, incomplete: 0 };
-      Object.values(roomState).forEach(r => { c[r.status || 'pending']++; });
-      document.getElementById('cnt-active').textContent = c.active;
-      document.getElementById('cnt-complete').textContent = c.complete;
-      document.getElementById('cnt-incomplete').textContent = c.incomplete;
+      const c = { not_cleaned: 0, cleaning: 0, awaiting_approval: 0, available: 0, incomplete: 0 };
+      Object.values(roomState).forEach(r => { c[r.status || 'not_cleaned']++; });
+      document.getElementById('cnt-cleaning').textContent = c.cleaning;
+      document.getElementById('cnt-awaiting_approval').textContent = c.awaiting_approval;
+      document.getElementById('cnt-available').textContent = c.available;
       const total = Object.keys(roomState).length;
       document.getElementById('room-count-label').textContent =
         total + ' room' + (total !== 1 ? 's' : '');
@@ -857,13 +878,19 @@
     }
 
     function statusLabel(s) {
-      const map = { pending: 'Pending', active: 'In Progress', complete: 'Complete', incomplete: 'Incomplete' };
+      const map = {
+        not_cleaned: 'Not Cleaned',
+        cleaning: 'Cleaning',
+        awaiting_approval: 'Awaiting Approval',
+        available: 'Available',
+        incomplete: 'Incomplete'
+      };
       return map[s] || s;
     }
 
     function renderCard(room) {
       const data = roomState[room];
-      const status = data.status || 'pending';
+      const status = data.status || 'not_cleaned';
       const pct = Math.round((data.zones_done / TOTAL) * 100);
       const scanned = new Set(data.scanned || []);
 
@@ -877,7 +904,7 @@
       }).join('');
 
       let startStr = '';
-      if (status === 'complete' && data.start_time && data.end_time) {
+      if ((status === 'awaiting_approval' || status === 'available') && data.start_time && data.end_time) {
         // Calculate duration for completed rooms
         try {
           const start = new Date(data.start_time);
@@ -932,7 +959,7 @@
 
       // Apply active filter
       if (activeFilter) {
-        rooms = rooms.filter(room => (roomState[room].status || 'pending') === activeFilter);
+        rooms = rooms.filter(room => (roomState[room].status || 'not_cleaned') === activeFilter);
       }
 
       // Clear ALL content (cards and messages) first
@@ -987,7 +1014,7 @@
           } else if (evt.type === 'session_open') {
             showToast(`🚪 Room ${evt.data.room} session opened`);
           } else if (evt.type === 'session_close') {
-            const icon = evt.data.status === 'complete' ? '✅' : '⚠️';
+            const icon = evt.data.status === 'awaiting_approval' ? '⏳' : evt.data.status === 'available' ? '✅' : '⚠️';
             showToast(`${icon} Room ${evt.data.room} ${evt.data.status}`);
           } else if (evt.type === 'door_tap') {
             showToast(`🚪 Door tap — Room ${evt.data.room}`);

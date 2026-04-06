@@ -6,7 +6,8 @@
 -- ---------------------------------------------------------------------------
 -- 1. sessions
 --    One row per cleaning session.  Opened when staff taps door reader,
---    closed (with status complete/incomplete) when they leave.
+--    closed (with status cleaning/awaiting_approval/available/incomplete) when they leave.
+--    Status flow: not_cleaned -> cleaning -> awaiting_approval -> available
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sessions (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,8 +15,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     room        TEXT        NOT NULL,
     start_time  TIMESTAMPTZ NOT NULL DEFAULT now(),
     end_time    TIMESTAMPTZ,
-    status      TEXT        NOT NULL DEFAULT 'active'
-                            CHECK (status IN ('active', 'complete', 'incomplete'))
+    status      TEXT        NOT NULL DEFAULT 'cleaning'
+                            CHECK (status IN ('cleaning', 'awaiting_approval', 'available', 'incomplete'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_room_status ON sessions (room, status);
