@@ -249,22 +249,22 @@ def receive_scan():
     # before sending the scan request.
     _log("SCAN_ZONE", f"tag_uid={tag_uid} card={card_uid} area={area} room={room}")
 
-    # Find the active session for this card/room combination
+    # Find the cleaning session for this card/room combination
     session_resp = (
         supabase.table("sessions")
         .select("id")
         .eq("card_uid", card_uid)
         .eq("room", room)
-        .eq("status", "active")
+        .eq("status", "cleaning")
         .order("start_time", desc=True)
         .limit(1)
         .execute()
     )
 
-    # Return 400 if no active session found
+    # Return 400 if no cleaning session found
     if not session_resp.data:
-        _log("SCAN_NO_SESSION", f"No active session for card={card_uid} room={room}")
-        return jsonify({"error": "No active session found. Tap door reader to start."}), 400
+        _log("SCAN_NO_SESSION", f"No cleaning session for card={card_uid} room={room}")
+        return jsonify({"error": "No cleaning session found. Tap door reader to start."}), 400
 
     session_id = session_resp.data[0]["id"]
 
@@ -328,13 +328,13 @@ def open_session():
     supabase.table("sessions").update({
         "status":   "incomplete",
         "end_time": _now_iso(),
-    }).eq("room", room).eq("status", "active").execute()
+    }).eq("room", room).eq("status", "cleaning").execute()
 
     session_row = {
         "card_uid":   card_uid,
         "room":       room,
         "start_time": _now_iso(),
-        "status":     "active",
+        "status":     "cleaning",
     }
     resp = supabase.table("sessions").insert(session_row).execute()
     session = resp.data[0] if resp.data else {}
@@ -347,7 +347,7 @@ def open_session():
 @app.route("/session/close", methods=["POST"])
 def close_session():
     """
-    Close a cleaning session. Marks complete if all 6 zones scanned,
+    Close a cleaning session. Marks awaiting_approval if all 6 zones scanned,
     incomplete otherwise. Calculates duration_mins from start_time to end_time.
 
     Expected JSON body:
@@ -371,14 +371,14 @@ def close_session():
         .select("id, start_time")
         .eq("card_uid", card_uid)
         .eq("room", room)
-        .eq("status", "active")
+        .eq("status", "cleaning")
         .order("start_time", desc=True)
         .limit(1)
         .execute()
     )
 
     if not session_resp.data:
-        return jsonify({"error": "No active session found"}), 404
+        return jsonify({"error": "No cleaning session found"}), 404
 
     session_id = session_resp.data[0]["id"]
     start_time_str = session_resp.data[0]["start_time"]
@@ -391,7 +391,7 @@ def close_session():
     )
 
     scanned_areas = {s["area"] for s in (scans_resp.data or [])}
-    status = "complete" if scanned_areas.issuperset(set(ZONES)) else "incomplete"
+    status = "awaiting_approval" if scanned_areas.issuperset(set(ZONES)) else "incomplete"
 
     # Calculate duration in minutes
     end_time = datetime.now(timezone.utc)
@@ -443,7 +443,7 @@ def api_status():
     sessions_resp = (
         supabase.table("sessions")
         .select("id, card_uid, room, start_time, end_time, status")
-        .in_("status", ["active", "complete", "incomplete"])
+        .in_("status", ["cleaning", "awaiting_approval", "available", "incomplete"])
         .order("start_time", desc=True)
         .execute()
     )
@@ -455,18 +455,18 @@ def api_status():
         if room not in session_map:
             session_map[room] = s
 
-    # Fetch scans for all active sessions in one query
-    active_sessions = {
+    # Fetch scans for all cleaning sessions in one query
+    cleaning_sessions = {
         s["id"]: s for s in session_map.values()
-        if s["status"] == "active"
+        if s["status"] == "cleaning"
     }
 
     scans_map: dict[str, list[str]] = {}
-    if active_sessions:
+    if cleaning_sessions:
         scans_resp = (
             supabase.table("scans")
             .select("session_id, area")
-            .in_("session_id", list(active_sessions.keys()))
+            .in_("session_id", list(cleaning_sessions.keys()))
             .execute()
         )
         for scan in (scans_resp.data or []):
@@ -482,7 +482,7 @@ def api_status():
         if not session:
             result.append({
                 "room":        room_number,
-                "status":      "pending",
+                "status":      "not_cleaned",
                 "zones_done":  0,
                 "zones_total": TOTAL_ZONES,
                 "scanned":     [],
@@ -491,7 +491,7 @@ def api_status():
             })
             continue
 
-        if session["status"] == "active":
+        if session["status"] == "cleaning":
             scanned = scans_map.get(session["id"], [])
         else:
             closed_scans = (
@@ -1119,13 +1119,13 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
     _log("DOOR_TAP", f"card={card_uid} room={room}")
 
     try:
-        # Check if an active session already exists for this card
+        # Check if a cleaning session already exists for this card
         existing = (
             supabase.table("sessions")
             .select("id, start_time")
             .eq("card_uid", card_uid)
             .eq("room", room)
-            .eq("status", "active")
+            .eq("status", "cleaning")
             .execute()
         )
 
@@ -1141,7 +1141,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
                 .execute()
             )
             scanned = {s["area"] for s in (scans_resp.data or [])}
-            status = "complete" if scanned.issuperset(set(ZONES)) else "incomplete"
+            status = "awaiting_approval" if scanned.issuperset(set(ZONES)) else "incomplete"
             missing = sorted(set(ZONES) - scanned)
 
             # Calculate duration in minutes
@@ -1165,13 +1165,13 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             supabase.table("sessions").update({
                 "status":   "incomplete",
                 "end_time": _now_iso(),
-            }).eq("room", room).eq("status", "active").execute()
+            }).eq("room", room).eq("status", "cleaning").execute()
 
             session_row = {
                 "card_uid":   card_uid,
                 "room":       room,
                 "start_time": _now_iso(),
-                "status":     "active",
+                "status":     "cleaning",
             }
             resp = supabase.table("sessions").insert(session_row).execute()
             session = resp.data[0] if resp.data else {}
