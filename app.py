@@ -900,39 +900,50 @@ def populate_test_data():
         import uuid
         from datetime import datetime as dt, timedelta
 
-        # Test data structure - one room for each status
+        # Test data structure - rooms showing all statuses in the ranking order
         test_data = [
+            # Not Cleaned (no session yet)
+            {
+                "room": "101",
+                "no_session": True  # Will result in not_cleaned status
+            },
+            {
+                "room": "102",
+                "no_session": True
+            },
+            # Cleaning (active sessions with partial zones)
+            {
+                "room": "201",
+                "card_uid": "FAKE-MARIA",
+                "status": "cleaning",
+                "minutes_ago": 8,
+                "scans": ["Toilet", "Wardrobe", "Bed"]
+            },
+            {
+                "room": "202",
+                "card_uid": "FAKE-JAMES",
+                "status": "cleaning",
+                "minutes_ago": 15,
+                "scans": ["Toilet", "Wardrobe"]
+            },
+            # Awaiting Approval (all zones scanned, pending supervisor approval)
             {
                 "room": "301",
                 "card_uid": "FAKE-JOHN",
-                "status": "available",
-                "hours_ago": 3,
+                "status": "awaiting_approval",
+                "hours_ago": 1.5,
                 "duration_hours": 0.35,  # 21 minutes
                 "scans": ZONES
             },
             {
                 "room": "302",
-                "card_uid": "FAKE-MARIA",
+                "card_uid": "FAKE-ANA",
                 "status": "awaiting_approval",
-                "hours_ago": 1.5,
+                "hours_ago": 0.5,
                 "duration_hours": 0.25,  # 15 minutes
                 "scans": ZONES
             },
-            {
-                "room": "303",
-                "card_uid": "FAKE-JAMES",
-                "status": "cleaning",
-                "minutes_ago": 12,
-                "scans": ["Toilet", "Wardrobe", "Bed"]
-            },
-            {
-                "room": "304",
-                "card_uid": "FAKE-ANA",
-                "status": "incomplete",
-                "hours_ago": 2,
-                "duration_hours": 0.3,  # 18 minutes
-                "scans": ["Toilet", "Wardrobe", "Study Desk"]
-            },
+            # Available (approved and ready for guests)
             {
                 "room": "401",
                 "card_uid": "FAKE-CARLOS",
@@ -944,10 +955,27 @@ def populate_test_data():
             {
                 "room": "402",
                 "card_uid": "FAKE-SOFIA",
+                "status": "available",
+                "hours_ago": 3,
+                "duration_hours": 0.33,  # 20 minutes
+                "scans": ZONES
+            },
+            # Incomplete (closed session without all zones)
+            {
+                "room": "501",
+                "card_uid": "FAKE-ALEX",
+                "status": "incomplete",
+                "hours_ago": 2,
+                "duration_hours": 0.3,  # 18 minutes
+                "scans": ["Toilet", "Wardrobe", "Study Desk"]
+            },
+            {
+                "room": "502",
+                "card_uid": "FAKE-MAYA",
                 "status": "incomplete",
                 "hours_ago": 1,
                 "duration_hours": 0.2,  # 12 minutes
-                "scans": ["Wardrobe", "Study Desk"]
+                "scans": ["Toilet", "Bed"]
             },
         ]
 
@@ -969,6 +997,11 @@ def populate_test_data():
                     }).execute()
                 except:
                     pass  # Room already exists
+
+                # Skip session creation for rooms with no_session flag
+                if room_data.get("no_session"):
+                    created_count += 1
+                    continue
 
                 # Calculate start/end times
                 if "hours_ago" in room_data:

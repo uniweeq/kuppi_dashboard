@@ -107,7 +107,7 @@
     }
 
     .stat-card.awaiting_approval .stat-icon {
-      background: #fff4e5;
+      background: var(--awaiting-bg);
     }
 
     .stat-card.available .stat-icon {
@@ -142,7 +142,7 @@
     }
 
     .stat-card.awaiting_approval .stat-num {
-      color: #f59e0b;
+      color: var(--awaiting-c);
     }
 
     .stat-card.available .stat-num {
@@ -256,7 +256,7 @@
     }
 
     [data-status="awaiting_approval"] .card-accent {
-      background: #f59e0b;
+      background: var(--awaiting-c);
     }
 
     [data-status="available"] .card-accent {
@@ -314,8 +314,8 @@
     }
 
     [data-status="awaiting_approval"] .status-tag {
-      background: #fff4e5;
-      color: #f59e0b;
+      background: var(--awaiting-bg);
+      color: var(--awaiting-c);
     }
 
     [data-status="available"] .status-tag {
@@ -374,7 +374,7 @@
     }
 
     [data-status="awaiting_approval"] .prog-fill {
-      background: #f59e0b;
+      background: var(--awaiting-c);
     }
 
     [data-status="available"] .prog-fill {
@@ -697,7 +697,7 @@
           <div class="stat-icon">🧹</div>
           <div>
             <div class="stat-num" id="cnt-cleaning">—</div>
-            <div class="stat-lbl">In Progress</div>
+            <div class="stat-lbl">Cleaning</div>
           </div>
         </div>
         <div class="stat-card awaiting_approval" role="button" onclick="filterByStatus('awaiting_approval')" data-status="awaiting_approval"
@@ -713,7 +713,7 @@
           <div class="stat-icon">⚠️</div>
           <div>
             <div class="stat-num" id="cnt-incomplete">—</div>
-            <div class="stat-lbl">Cleaning</div>
+            <div class="stat-lbl">Incomplete</div>
           </div>
         </div>
         <div class="stat-card available" role="button" onclick="filterByStatus('available')" data-status="available"
@@ -948,10 +948,10 @@
     function statusLabel(s) {
       const map = {
         not_cleaned: 'Not Cleaned',
-        cleaning: 'In Progress',
+        cleaning: 'Cleaning',
         awaiting_approval: 'Awaiting Approval',
         available: 'Available',
-        incomplete: 'Cleaning'
+        incomplete: 'Incomplete'
       };
       return map[s] || s;
     }

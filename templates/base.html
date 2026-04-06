@@ -30,12 +30,23 @@
       --indigo-light: #edecfd;
       --indigo-xlight: #f5f4ff;
 
-      --pending-c: #9BAAB8;
-      --pending-bg: #f3f6f9;
-      --active-c: #E8A020;
-      --active-bg: #fff8ec;
-      --complete-c: #22C07A;
-      --complete-bg: #edfaf3;
+      /* Status ranking colors: Not Cleaned → Cleaning → Awaiting Approval → Available */
+      --not-cleaned-c: #9BAAB8;
+      --not-cleaned-bg: #f3f6f9;
+      --cleaning-c: #3B82F6;
+      --cleaning-bg: #eff6ff;
+      --awaiting-c: #F59E0B;
+      --awaiting-bg: #fff4e5;
+      --available-c: #22C07A;
+      --available-bg: #edfaf3;
+
+      /* Legacy aliases for backward compatibility */
+      --pending-c: var(--not-cleaned-c);
+      --pending-bg: var(--not-cleaned-bg);
+      --active-c: var(--cleaning-c);
+      --active-bg: var(--cleaning-bg);
+      --complete-c: var(--available-c);
+      --complete-bg: var(--available-bg);
       --incomplete-c: #E85252;
       --incomplete-bg: #fff0f0;
 
