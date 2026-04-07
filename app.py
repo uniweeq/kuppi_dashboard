@@ -1023,9 +1023,6 @@ def populate_test_data():
                 }
                 if end_time:
                     session_data["end_time"] = end_time.isoformat()
-                    # Calculate duration in minutes for completed sessions
-                    duration_mins = int((end_time - start_time).total_seconds() / 60)
-                    session_data["duration_mins"] = duration_mins
 
                 session_resp = supabase.table("sessions").insert(session_data).execute()
                 if not session_resp.data:
