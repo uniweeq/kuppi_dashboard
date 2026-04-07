@@ -6,8 +6,8 @@
 -- ---------------------------------------------------------------------------
 -- 1. sessions
 --    One row per cleaning session.  Opened when staff taps door reader,
---    closed (with status cleaning/awaiting_approval/available/incomplete) when they leave.
---    Status flow: not_cleaned -> cleaning -> awaiting_approval -> available
+--    closed (with status cleaning/awaiting_approval/ready) when they leave.
+--    Status flow: not_cleaned -> cleaning -> awaiting_approval -> ready
 --    Note: "not_cleaned" is a display-only status shown when no session exists.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sessions (
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     start_time  TIMESTAMPTZ NOT NULL DEFAULT now(),
     end_time    TIMESTAMPTZ,
     status      TEXT        NOT NULL DEFAULT 'cleaning'
-                            CHECK (status IN ('cleaning', 'awaiting_approval', 'available', 'incomplete'))
+                            CHECK (status IN ('cleaning', 'awaiting_approval', 'ready'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_room_status ON sessions (room, status);

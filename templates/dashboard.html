@@ -110,12 +110,8 @@
       background: var(--awaiting-bg);
     }
 
-    .stat-card.available .stat-icon {
+    .stat-card.ready .stat-icon {
       background: var(--complete-bg);
-    }
-
-    .stat-card.incomplete .stat-icon {
-      background: var(--incomplete-bg);
     }
 
     .stat-num {
@@ -145,12 +141,8 @@
       color: var(--awaiting-c);
     }
 
-    .stat-card.available .stat-num {
+    .stat-card.ready .stat-num {
       color: var(--complete-c);
-    }
-
-    .stat-card.incomplete .stat-num {
-      color: var(--incomplete-c);
     }
 
     /* ── Section header ───────────────────────────────────────────── */
@@ -259,12 +251,8 @@
       background: var(--awaiting-c);
     }
 
-    [data-status="available"] .card-accent {
+    [data-status="ready"] .card-accent {
       background: var(--complete-c);
-    }
-
-    [data-status="incomplete"] .card-accent {
-      background: var(--incomplete-c);
     }
 
     .card-inner {
@@ -318,14 +306,9 @@
       color: var(--awaiting-c);
     }
 
-    [data-status="available"] .status-tag {
+    [data-status="ready"] .status-tag {
       background: var(--complete-bg);
       color: var(--complete-c);
-    }
-
-    [data-status="incomplete"] .status-tag {
-      background: var(--incomplete-bg);
-      color: var(--incomplete-c);
     }
 
     /* progress */
@@ -377,12 +360,8 @@
       background: var(--awaiting-c);
     }
 
-    [data-status="available"] .prog-fill {
+    [data-status="ready"] .prog-fill {
       background: var(--complete-c);
-    }
-
-    [data-status="incomplete"] .prog-fill {
-      background: var(--incomplete-c);
     }
 
     /* zone checklist */
@@ -708,20 +687,12 @@
             <div class="stat-lbl">Awaiting Approval</div>
           </div>
         </div>
-        <div class="stat-card incomplete" role="button" onclick="filterByStatus('incomplete')" data-status="incomplete"
-          style="cursor: pointer;">
-          <div class="stat-icon">⚠️</div>
-          <div>
-            <div class="stat-num" id="cnt-incomplete">—</div>
-            <div class="stat-lbl">Incomplete</div>
-          </div>
-        </div>
-        <div class="stat-card available" role="button" onclick="filterByStatus('available')" data-status="available"
+        <div class="stat-card ready" role="button" onclick="filterByStatus('ready')" data-status="ready"
           style="cursor: pointer;">
           <div class="stat-icon">✅</div>
           <div>
-            <div class="stat-num" id="cnt-available">—</div>
-            <div class="stat-lbl">Available</div>
+            <div class="stat-num" id="cnt-ready">—</div>
+            <div class="stat-lbl">Ready</div>
           </div>
         </div>
       </div>
@@ -876,7 +847,7 @@
       }).join('');
       document.getElementById('modal-items-detail').innerHTML = itemsHtml;
 
-      const timeInfo = (status === 'awaiting_approval' || status === 'available') && data.start_time && data.end_time
+      const timeInfo = (status === 'awaiting_approval' || status === 'ready') && data.start_time && data.end_time
         ? (() => {
           try {
             const start = new Date(data.start_time);
@@ -901,13 +872,12 @@
     }
 
     function updateStats() {
-      const c = { not_cleaned: 0, cleaning: 0, awaiting_approval: 0, available: 0, incomplete: 0 };
+      const c = { not_cleaned: 0, cleaning: 0, awaiting_approval: 0, ready: 0 };
       Object.values(roomState).forEach(r => { c[r.status || 'not_cleaned']++; });
       document.getElementById('cnt-not_cleaned').textContent = c.not_cleaned;
       document.getElementById('cnt-cleaning').textContent = c.cleaning;
       document.getElementById('cnt-awaiting_approval').textContent = c.awaiting_approval;
-      document.getElementById('cnt-incomplete').textContent = c.incomplete;
-      document.getElementById('cnt-available').textContent = c.available;
+      document.getElementById('cnt-ready').textContent = c.ready;
       const total = Object.keys(roomState).length;
       document.getElementById('room-count-label').textContent =
         total + ' room' + (total !== 1 ? 's' : '');
@@ -953,8 +923,7 @@
         not_cleaned: 'Not Cleaned',
         cleaning: 'Cleaning',
         awaiting_approval: 'Awaiting Approval',
-        available: 'Available',
-        incomplete: 'Incomplete'
+        ready: 'Ready'
       };
       return map[s] || s;
     }
@@ -975,7 +944,7 @@
       }).join('');
 
       let startStr = '';
-      if ((status === 'awaiting_approval' || status === 'available') && data.start_time && data.end_time) {
+      if ((status === 'awaiting_approval' || status === 'ready') && data.start_time && data.end_time) {
         // Calculate duration for completed rooms
         try {
           const start = new Date(data.start_time);
@@ -1108,7 +1077,7 @@
           } else if (evt.type === 'session_open') {
             showToast(`🚪 Room ${evt.data.room} session opened`);
           } else if (evt.type === 'session_close') {
-            const icon = evt.data.status === 'awaiting_approval' ? '⏳' : evt.data.status === 'available' ? '✅' : '⚠️';
+            const icon = evt.data.status === 'ready' ? '✅' : '⏳';
             showToast(`${icon} Room ${evt.data.room} ${evt.data.status}`);
           } else if (evt.type === 'door_tap') {
             showToast(`🚪 Door tap — Room ${evt.data.room}`);

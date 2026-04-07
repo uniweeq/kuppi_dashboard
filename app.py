@@ -326,7 +326,7 @@ def open_session():
 
     # Close any previously open session for this room before opening new one
     supabase.table("sessions").update({
-        "status":   "incomplete",
+        "status":   "awaiting_approval",
         "end_time": _now_iso(),
     }).eq("room", room).eq("status", "cleaning").execute()
 
@@ -347,8 +347,8 @@ def open_session():
 @app.route("/session/close", methods=["POST"])
 def close_session():
     """
-    Close a cleaning session. Marks awaiting_approval if all 6 zones scanned,
-    incomplete otherwise. Calculates duration_mins from start_time to end_time.
+    Close a cleaning session. Marks awaiting_approval regardless of zones scanned.
+    Calculates duration_mins from start_time to end_time.
 
     Expected JSON body:
         {
@@ -391,7 +391,7 @@ def close_session():
     )
 
     scanned_areas = {s["area"] for s in (scans_resp.data or [])}
-    status = "awaiting_approval" if scanned_areas.issuperset(set(ZONES)) else "incomplete"
+    status = "awaiting_approval"
 
     # Calculate duration in minutes
     end_time = datetime.now(timezone.utc)
@@ -443,7 +443,7 @@ def api_status():
     sessions_resp = (
         supabase.table("sessions")
         .select("id, card_uid, room, start_time, end_time, status")
-        .in_("status", ["cleaning", "awaiting_approval", "available", "incomplete"])
+        .in_("status", ["cleaning", "awaiting_approval", "ready"])
         .order("start_time", desc=True)
         .execute()
     )
@@ -817,7 +817,7 @@ def recent_sessions():
     """
     try:
         # Fetch all completed sessions ordered by room and end_time
-        resp = supabase.table("sessions").select("*").eq("status", "complete").order("room", desc=False).order("end_time", desc=True).execute()
+        resp = supabase.table("sessions").select("*").eq("status", "ready").order("room", desc=False).order("end_time", desc=True).execute()
         
         sessions_by_room = {}
         for session in (resp.data or []):
@@ -943,11 +943,11 @@ def populate_test_data():
                 "duration_hours": 0.25,  # 15 minutes
                 "scans": ZONES
             },
-            # Available (approved and ready for guests)
+            # Ready (approved and ready for guests)
             {
                 "room": "401",
                 "card_uid": "FAKE-CARLOS",
-                "status": "available",
+                "status": "ready",
                 "hours_ago": 4,
                 "duration_hours": 0.4,  # 24 minutes
                 "scans": ZONES
@@ -955,27 +955,10 @@ def populate_test_data():
             {
                 "room": "402",
                 "card_uid": "FAKE-SOFIA",
-                "status": "available",
+                "status": "ready",
                 "hours_ago": 3,
                 "duration_hours": 0.33,  # 20 minutes
                 "scans": ZONES
-            },
-            # Incomplete (closed session without all zones)
-            {
-                "room": "501",
-                "card_uid": "FAKE-ALEX",
-                "status": "incomplete",
-                "hours_ago": 2,
-                "duration_hours": 0.3,  # 18 minutes
-                "scans": ["Toilet", "Wardrobe", "Study Desk"]
-            },
-            {
-                "room": "502",
-                "card_uid": "FAKE-MAYA",
-                "status": "incomplete",
-                "hours_ago": 1,
-                "duration_hours": 0.2,  # 12 minutes
-                "scans": ["Toilet", "Bed"]
             },
         ]
 
