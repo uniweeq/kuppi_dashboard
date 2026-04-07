@@ -813,6 +813,7 @@
 
     let roomState = {};
     let activeFilter = null;
+    let openModalRoom = null;
 
     function fmt(iso) {
       if (!iso) return '';
@@ -828,6 +829,7 @@
     }
 
     function openModal(room) {
+      openModalRoom = room;
       const data = roomState[room];
       if (!data) return;
 
@@ -894,6 +896,7 @@
     }
 
     function closeModal() {
+      openModalRoom = null;
       document.getElementById('modal-overlay').classList.remove('open');
     }
 
@@ -1030,30 +1033,53 @@
         rooms = rooms.filter(room => (roomState[room].status || 'not_cleaned') === activeFilter);
       }
 
-      // Clear ALL content (cards and messages) first
-      grid.innerHTML = '';
+      // Check if the set of visible rooms has changed
+      const currentIds = new Set(
+        Array.from(grid.querySelectorAll('.room-card')).map(c => c.id)
+      );
+      const newIds = new Set(rooms.map(r => `tile-${r}`));
+      const setsEqual = currentIds.size === newIds.size &&
+        [...currentIds].every(id => newIds.has(id));
 
-      if (rooms.length === 0) {
-        // Show message only if we have an active filter with no rooms
-        if (activeFilter) {
-          const emptyDiv = document.createElement('div');
-          emptyDiv.className = 'empty-state';
-          const statusName = statusLabel(activeFilter);
-          emptyDiv.innerHTML = `<div class="e-icon">🏨</div>
-          <p>No rooms with status "${statusName}" found.</p>`;
-          grid.appendChild(emptyDiv);
+      if (!setsEqual) {
+        // Room set changed — full rebuild for correct ordering
+        grid.innerHTML = '';
+
+        if (rooms.length === 0) {
+          if (activeFilter) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.innerHTML = `<div class="e-icon">🏨</div>
+            <p>No rooms with status "${statusLabel(activeFilter)}" found.</p>`;
+            grid.appendChild(emptyDiv);
+          }
+          return;
         }
-        return;
+
+        rooms.forEach((room, i) => {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = renderCard(room);
+          const card = tmp.firstElementChild;
+          card.style.animationDelay = `${i * 40}ms`;
+          grid.appendChild(card);
+        });
+      } else {
+        // Same rooms — patch each card in-place, no animation replay
+        rooms.forEach(room => {
+          const existing = document.getElementById(`tile-${room}`);
+          if (!existing) return;
+          const tmp = document.createElement('div');
+          tmp.innerHTML = renderCard(room);
+          const newCard = tmp.firstElementChild;
+          newCard.style.animation = 'none';
+          existing.replaceWith(newCard);
+        });
       }
 
-      // Add only filtered rooms
-      rooms.forEach((room, i) => {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = renderCard(room);
-        const card = tmp.firstElementChild;
-        card.style.animationDelay = `${i * 40}ms`;
-        grid.appendChild(card);
-      });
+      // If a modal is open, refresh it with the latest data
+      if (openModalRoom && roomState[openModalRoom]) {
+        openModal(openModalRoom);
+      }
     }
 
     async function loadStatus() {
