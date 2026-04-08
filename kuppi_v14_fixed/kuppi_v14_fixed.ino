@@ -81,10 +81,20 @@ uint8_t zoneItemCount[NUM_ZONES] = {10, 5, 6, 6, 8, 6};
 bool zoneCompleted[NUM_ZONES]          = {false};
 bool itemChecked[NUM_ZONES][MAX_ITEMS] = {false};
 
-enum Screen { SCREEN_SCAN_ROOM, SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
-Screen currentScreen = SCREEN_SCAN_ROOM;
+enum Screen { SCREEN_STAFF_LOGIN, SCREEN_SCAN_ROOM, SCREEN_HOME, SCREEN_CHECKLIST, SCREEN_COMPLETE };
+Screen currentScreen = SCREEN_STAFF_LOGIN;
 int activeZone   = -1;
 int scrollOffset = 0;
+
+// ── STAFF LOGIN STATE ────────────────────────────────────────
+bool staffLoggedIn = false;
+char staffName[32]  = "";
+char staffApiId[64] = "";   // UUID returned by /api/staff-lookup
+
+volatile bool pendingStaffLookup  = false;
+char staffLookupUID[20]           = "";
+volatile bool staffLookupDone     = false;
+volatile bool staffLookupSuccess  = false;
 
 // ── WI-FI STATUS ────────────────────────────────────────────
 enum WifiStatus { WIFI_OFFLINE, WIFI_SENDING, WIFI_OK, WIFI_FAIL };
@@ -244,6 +254,9 @@ void sendSessionOpen() {
   StaticJsonDocument<256> doc;
   doc["card_uid"] = CARD_UID;
   doc["room"]     = activeRoom;
+  if (strlen(staffApiId) > 0) {
+    doc["staff_id"] = staffApiId;
+  }
   String payload;
   serializeJson(doc, payload);
   Serial.println("[HTTP] POST /session/open");
@@ -313,9 +326,55 @@ void sendRoomLookup() {
   roomLookupDone = true;
 }
 
+void sendStaffLookup() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[HTTP] Offline — staff lookup failed");
+    staffLookupSuccess = false;
+    staffLookupDone = true;
+    return;
+  }
+  String url = String("http://") + SERVER_IP + ":" + SERVER_PORT + "/api/staff-lookup/" + staffLookupUID;
+  Serial.print("[HTTP] GET /api/staff-lookup/"); Serial.println(staffLookupUID);
+  HTTPClient http;
+  http.begin(url);
+  http.setTimeout(3000);
+  int code = http.GET();
+  Serial.print("[HTTP] Staff lookup: "); Serial.println(code);
+
+  if (code == 200) {
+    String response = http.getString();
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, response);
+    if (!err) {
+      const char* name = doc["name"];
+      const char* id   = doc["id"];
+      if (name && id) {
+        strncpy(staffName,  name, sizeof(staffName)  - 1);
+        strncpy(staffApiId, id,   sizeof(staffApiId) - 1);
+        staffName[sizeof(staffName) - 1]   = '\0';
+        staffApiId[sizeof(staffApiId) - 1] = '\0';
+        staffLookupSuccess = true;
+        Serial.print("[HTTP] Staff found: "); Serial.println(staffName);
+      } else {
+        staffLookupSuccess = false;
+      }
+    } else {
+      staffLookupSuccess = false;
+    }
+  } else {
+    staffLookupSuccess = false;
+  }
+  http.end();
+  staffLookupDone = true;
+}
+
 // ── BACKGROUND HTTP TASK (Core 0) ────────────────────────────
 void httpTask(void* parameter) {
   for(;;) {
+    if(pendingStaffLookup) {
+      pendingStaffLookup = false;
+      sendStaffLookup();
+    }
     if(pendingRoomLookup) {
       pendingRoomLookup = false;
       sendRoomLookup();
@@ -591,6 +650,99 @@ void drawRoomNotFoundScreen() {
   tft.print(line2);
 }
 
+// ── STAFF LOGIN SCREENS ──────────────────────────────────────
+void drawStaffLoginScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+  drawTimerBorder();
+
+  int cx = 240, cy = 115;
+
+  // Person icon inside a circle
+  tft.fillCircle(cx, cy, 52, COL_PILL_OFF);
+  tft.fillCircle(cx, cy, 46, COL_BG);
+  tft.fillCircle(cx, cy - 12, 14, COL_FADED);
+  tft.fillEllipse(cx, cy + 22, 22, 14, COL_FADED);
+
+  tft.setTextColor(COL_WHITE);
+  tft.setTextSize(3);
+  const char* line1 = "Scan Staff Card";
+  int w1 = strlen(line1) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 65);
+  tft.print(line1);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Tap your personal NFC card";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 100);
+  tft.print(line2);
+}
+
+void drawStaffFoundScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+
+  int cx = 240, cy = 110;
+
+  // Green check circle
+  tft.fillCircle(cx, cy, 48, COL_GREEN);
+  tft.fillCircle(cx, cy, 42, COL_GREEN_DARK);
+  for(int t = -2; t <= 2; t++) {
+    tft.drawLine(cx - 20, cy + t, cx - 6, cy + 14 + t, COL_WHITE);
+    tft.drawLine(cx - 6, cy + 14 + t, cx + 22, cy - 16 + t, COL_WHITE);
+  }
+
+  tft.setTextColor(COL_WHITE);
+  tft.setTextSize(3);
+  char welcomeMsg[48];
+  snprintf(welcomeMsg, sizeof(welcomeMsg), "Hello, %s!", staffName);
+  int w1 = strlen(welcomeMsg) * 18;
+  if (w1 > 460) {
+    // Name too long — fall back to smaller text
+    tft.setTextSize(2);
+    w1 = strlen(welcomeMsg) * 12;
+  }
+  tft.setCursor((480 - w1) / 2, cy + 60);
+  tft.print(welcomeMsg);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Scan room tag to begin...";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 96);
+  tft.print(line2);
+}
+
+void drawStaffNotFoundScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+
+  int cx = 240, cy = 120;
+
+  // Red X circle
+  tft.fillCircle(cx, cy, 48, COL_RED);
+  tft.fillCircle(cx, cy, 42, COL_RED_DARK);
+  for(int t = -2; t <= 2; t++) {
+    tft.drawLine(cx - 16, cy - 16 + t, cx + 16, cy + 16 + t, COL_WHITE);
+    tft.drawLine(cx + 16, cy - 16 + t, cx - 16, cy + 16 + t, COL_WHITE);
+  }
+
+  tft.setTextColor(COL_RED);
+  tft.setTextSize(3);
+  const char* line1 = "Card Not Found";
+  int w1 = strlen(line1) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 60);
+  tft.print(line1);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line2 = "Register card with supervisor";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 95);
+  tft.print(line2);
+}
+
 // ── HOME SCREEN ─────────────────────────────────────────────
 void drawHomeScreen() {
   tft.fillScreen(COL_BG);
@@ -705,6 +857,24 @@ void drawCompleteScreen() {
 }
 
 // ── NFC HELPERS ──────────────────────────────────────────────
+
+// Sends the PN532 InRelease command to deselect the active tag.
+// Without this, subsequent readPassiveTargetID calls can hang the I2C bus
+// because the PN532 still has the previous card selected.
+// Must be called while holding the i2cMutex.
+void nfcReleaseTarget() {
+  uint8_t cmd[] = { PN532_COMMAND_INRELEASE, 0x01 };
+  if (nfc.sendCommandCheckAck(cmd, sizeof(cmd), 100)) {
+    // readDetectedPassiveTargetID is a public method that calls the private
+    // readdata internally — we use it here only to flush the InRelease
+    // response bytes from the PN532's buffer so the bus is clean for the
+    // next readPassiveTargetID call. The return value is intentionally ignored.
+    uint8_t uid[7];
+    uint8_t uidLen = 0;
+    nfc.readDetectedPassiveTargetID(uid, &uidLen);
+  }
+}
+
 bool uidMatch(uint8_t* uid, uint8_t* target) {
   for(int i=0;i<4;i++) if(uid[i+1]!=target[i]) return false;
   return true;
@@ -722,12 +892,18 @@ void resetAll() {
     zoneCompleted[i]=false;
     for(int j=0;j<MAX_ITEMS;j++) itemChecked[i][j]=false;
   }
-  currentScreen   = SCREEN_SCAN_ROOM;
+  currentScreen   = SCREEN_STAFF_LOGIN;
   activeZone      = -1;
   scrollOffset    = 0;
   timerRunning    = false;
   roomIdentified  = false;
   activeRoom[0]   = '\0';
+  // Clear staff session
+  staffLoggedIn       = false;
+  staffName[0]        = '\0';
+  staffApiId[0]       = '\0';
+  staffLookupDone     = false;
+  staffLookupSuccess  = false;
 }
 
 // ── TOUCH HANDLING ───────────────────────────────────────────
@@ -859,9 +1035,9 @@ void setup() {
   Serial.println("[HTTP] Background task started on Core 0");
 
   delay(800);
-  currentScreen = SCREEN_SCAN_ROOM;
-  drawScanRoomScreen();
-  Serial.println("[KUPPI] Ready - scan a room tag to begin");
+  currentScreen = SCREEN_STAFF_LOGIN;
+  drawStaffLoginScreen();
+  Serial.println("[KUPPI] Ready - scan staff card to log in");
 }
 
 // ── LOOP (Core 1) ────────────────────────────────────────────
@@ -885,6 +1061,69 @@ void loop() {
     } else if(!tp.pressed){
       lastPressed   = false;
       lastTouchTime = millis();
+    }
+  }
+
+  // ── NFC: STAFF LOGIN mode ────────────────────────────────
+  if(currentScreen == SCREEN_STAFF_LOGIN && millis() - lastNFCTime > 300){
+    lastNFCTime = millis();
+
+    // Check if staff lookup just completed
+    if(staffLookupDone) {
+      staffLookupDone = false;
+      if(staffLookupSuccess) {
+        staffLoggedIn = true;
+        buzzComplete();
+        drawStaffFoundScreen();
+        delay(1800);
+        currentScreen = SCREEN_SCAN_ROOM;
+        drawScanRoomScreen();
+        Serial.print("[STAFF] Logged in: "); Serial.println(staffName);
+      } else {
+        buzzOnce();
+        drawStaffNotFoundScreen();
+        delay(2200);
+        drawStaffLoginScreen();
+      }
+      return;
+    }
+
+    // Try to read an NFC card
+    uint8_t uid[7];
+    uint8_t uidLen = 0;
+    bool found = false;
+
+    if(xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+      found = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 50);
+      if (found) nfcReleaseTarget();
+      xSemaphoreGive(i2cMutex);
+    }
+
+    if(found) {
+      char hexUID[20] = "";
+      for(int i = 0; i < uidLen && i < 7; i++) {
+        char hex[4];
+        snprintf(hex, sizeof(hex), "%02X", uid[i]);
+        strcat(hexUID, hex);
+      }
+      Serial.print("[NFC] Staff card UID: "); Serial.println(hexUID);
+
+      strncpy(staffLookupUID, hexUID, sizeof(staffLookupUID) - 1);
+      staffLookupUID[sizeof(staffLookupUID) - 1] = '\0';
+      staffLookupDone    = false;
+      staffLookupSuccess = false;
+      pendingStaffLookup = true;
+      buzzOnce();
+
+      // Show "Looking up..." on screen
+      tft.fillScreen(COL_BG);
+      drawHeader("KUPPI", "v4", "", false);
+      tft.setTextColor(COL_WIFI_SEND);
+      tft.setTextSize(2);
+      const char* msg = "Verifying staff card...";
+      int w = strlen(msg) * 12;
+      tft.setCursor((480 - w) / 2, 150);
+      tft.print(msg);
     }
   }
 
@@ -924,6 +1163,7 @@ void loop() {
 
     if(xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
       found = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 50);
+      if (found) nfcReleaseTarget();
       xSemaphoreGive(i2cMutex);
     }
 
@@ -972,6 +1212,7 @@ void loop() {
 
     if(xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
       found = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLen, 50);
+      if (found) nfcReleaseTarget();
       xSemaphoreGive(i2cMutex);
     }
 
@@ -984,13 +1225,14 @@ void loop() {
       Serial.println();
       int zone = identifyZone(uid);
       if(zone >= 0){
-        if(currentScreen == SCREEN_COMPLETE) return;
-
         buzzOnce();
         activeZone    = zone;
         scrollOffset  = 0;
         currentScreen = SCREEN_CHECKLIST;
         drawChecklistScreen(zone);
+        // Push lastNFCTime forward to prevent re-reading the same tag
+        // if the user keeps it near the reader while on the checklist screen.
+        lastNFCTime = millis();
         Serial.print("[NFC] Zone: "); Serial.println(zoneNames[zone]);
       } else {
         Serial.println("[NFC] Unknown tag (not a zone)");

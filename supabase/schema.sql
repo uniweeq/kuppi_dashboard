@@ -4,6 +4,21 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
+-- 0. staff
+--    One row per housekeeping staff member.  Each staff member has a personal
+--    NFC card (card_uid) they tap on KUPPI to log in before starting a session.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS staff (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT        NOT NULL,
+    card_uid    TEXT        NOT NULL UNIQUE,
+    staff_code  TEXT        UNIQUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_card_uid ON staff (card_uid);
+
+-- ---------------------------------------------------------------------------
 -- 1. sessions
 --    One row per cleaning session.  Opened when staff taps door reader,
 --    closed (with status cleaning/awaiting_approval/ready) when they leave.
@@ -17,7 +32,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     start_time  TIMESTAMPTZ NOT NULL DEFAULT now(),
     end_time    TIMESTAMPTZ,
     status      TEXT        NOT NULL DEFAULT 'cleaning'
-                            CHECK (status IN ('cleaning', 'awaiting_approval', 'ready'))
+                            CHECK (status IN ('cleaning', 'awaiting_approval', 'ready')),
+    staff_id    UUID        REFERENCES staff(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_room_status ON sessions (room, status);
@@ -148,6 +164,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE scans;
 ALTER PUBLICATION supabase_realtime ADD TABLE rooms;
 ALTER PUBLICATION supabase_realtime ADD TABLE unknown_scans;
+ALTER PUBLICATION supabase_realtime ADD TABLE staff;
 
 -- ---------------------------------------------------------------------------
 -- 8. Trigger to auto-update updated_at timestamp on rooms table
@@ -185,3 +202,10 @@ CREATE TRIGGER update_rooms_updated_at BEFORE UPDATE ON rooms
 --   ('102', 'available', 'DOOR-102', '1', 'Standard'),
 --   ('201', 'available', 'DOOR-201', '2', 'Deluxe'),
 --   ('301', 'available', 'DOOR-301', '3', 'Suite');
+
+-- ---------------------------------------------------------------------------
+-- Migration: run this on an existing database (safe to skip on fresh installs
+-- because the CREATE TABLE above already includes these columns/tables).
+-- ---------------------------------------------------------------------------
+-- CREATE TABLE IF NOT EXISTS staff ( ... );   -- see table definition above
+-- ALTER TABLE sessions ADD COLUMN IF NOT EXISTS staff_id UUID REFERENCES staff(id) ON DELETE SET NULL;

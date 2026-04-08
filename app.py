@@ -324,6 +324,26 @@ def open_session():
     if not all([card_uid, room]):
         return jsonify({"error": "Missing required fields: card_uid, room"}), 400
 
+    # Resolve staff_id — accept either a UUID (from KUPPI device) or a card_uid string
+    resolved_staff_id = None
+    if staff_id:
+        # Try treating it as a UUID first (direct FK)
+        try:
+            import uuid as _uuid
+            _uuid.UUID(staff_id)
+            resolved_staff_id = staff_id
+        except ValueError:
+            # Not a UUID — look up by card_uid
+            lookup = (
+                supabase.table("staff")
+                .select("id")
+                .eq("card_uid", staff_id.upper())
+                .limit(1)
+                .execute()
+            )
+            if lookup.data:
+                resolved_staff_id = lookup.data[0]["id"]
+
     # Close any previously open session for this room before opening new one
     supabase.table("sessions").update({
         "status":   "awaiting_approval",
@@ -336,9 +356,12 @@ def open_session():
         "start_time": _now_iso(),
         "status":     "cleaning",
     }
+    if resolved_staff_id:
+        session_row["staff_id"] = resolved_staff_id
+
     resp = supabase.table("sessions").insert(session_row).execute()
     session = resp.data[0] if resp.data else {}
-    _log("SESSION_OPEN", f"room={room} card={card_uid} staff_id={staff_id} session_id={session.get('id')}")
+    _log("SESSION_OPEN", f"room={room} card={card_uid} staff_id={resolved_staff_id} session_id={session.get('id')}")
     notify_clients("session_open", {"room": room})
 
     return jsonify({"status": "ok", "session": session}), 201
@@ -439,10 +462,10 @@ def api_status():
     rooms_resp = supabase.table("rooms").select("room_number").execute()
     all_rooms = [r["room_number"] for r in (rooms_resp.data or [])]
 
-    # Fetch most recent sessions for all statuses
+    # Fetch most recent sessions for all statuses (include staff_id for name lookup)
     sessions_resp = (
         supabase.table("sessions")
-        .select("id, card_uid, room, start_time, end_time, status")
+        .select("id, card_uid, room, start_time, end_time, status, staff_id")
         .in_("status", ["cleaning", "awaiting_approval", "ready"])
         .order("start_time", desc=True)
         .execute()
@@ -454,6 +477,12 @@ def api_status():
         room = s["room"]
         if room not in session_map:
             session_map[room] = s
+
+    # Fetch all staff in one query and build a lookup map by id
+    staff_map: dict[str, str] = {}
+    staff_resp = supabase.table("staff").select("id, name").execute()
+    for s in (staff_resp.data or []):
+        staff_map[s["id"]] = s["name"]
 
     # Fetch scans for all cleaning sessions in one query
     cleaning_sessions = {
@@ -505,6 +534,7 @@ def api_status():
         scanned_set = set(scanned)
         missing = sorted(set(ZONES) - scanned_set)
 
+        staff_name = staff_map.get(session.get("staff_id", ""), None)
         result.append({
             "room":        room_number,
             "status":      session["status"],
@@ -514,6 +544,7 @@ def api_status():
             "missing":     missing,
             "start_time":  session.get("start_time"),
             "end_time":    session.get("end_time"),
+            "staff_name":  staff_name,
         })
 
     _log("API_STATUS", f"{len(result)} rooms returned")
@@ -764,6 +795,143 @@ def resolve_unknown_scan(scan_id):
         return jsonify({"error": "Failed to resolve unknown scan"}), 500
 
 
+@app.route("/api/staff-lookup/<card_uid>", methods=["GET"])
+def staff_lookup(card_uid: str):
+    """
+    Look up a staff member by their personal NFC card UID.
+    Called by the KUPPI device when staff taps their card on the login screen.
+
+    Returns:
+        200 + {id, name, staff_code} if found
+        404 if card_uid not registered to any staff member
+    """
+    card_uid = card_uid.strip().upper()
+    if not card_uid:
+        return jsonify({"error": "Missing card_uid"}), 400
+
+    try:
+        resp = (
+            supabase.table("staff")
+            .select("id, name, staff_code")
+            .eq("card_uid", card_uid)
+            .limit(1)
+            .execute()
+        )
+        if not resp.data:
+            _log("STAFF_LOOKUP", f"card_uid='{card_uid}' not found in staff table")
+            return jsonify({"error": "Staff card not registered"}), 404
+
+        staff = resp.data[0]
+        _log("STAFF_LOOKUP", f"card_uid={card_uid} → name={staff['name']}")
+        return jsonify({
+            "id":         staff["id"],
+            "name":       staff["name"],
+            "staff_code": staff.get("staff_code", ""),
+        }), 200
+
+    except Exception as e:
+        _log("STAFF_LOOKUP_ERROR", str(e))
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/staff", methods=["GET"])
+def get_staff():
+    """List all staff members."""
+    try:
+        resp = supabase.table("staff").select("*").order("name").execute()
+        _log("API_STAFF_LIST", f"{len(resp.data or [])} staff returned")
+        return jsonify(resp.data or []), 200
+    except Exception as e:
+        _log("API_STAFF_ERROR", f"Failed to list staff: {e}")
+        return jsonify({"error": "Failed to retrieve staff"}), 500
+
+
+@app.route("/api/staff", methods=["POST"])
+def create_staff():
+    """
+    Create a new staff member.
+
+    Expected JSON body:
+        {
+            "name":       "Maria Santos",
+            "card_uid":   "A1B2C3D4",  # their personal NFC card UID
+            "staff_code": "EMP-001"    # optional human-readable ID
+        }
+    """
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    name     = data.get("name",       "").strip()
+    card_uid = data.get("card_uid",   "").strip().upper()
+    staff_code = data.get("staff_code", "").strip() or None
+
+    if not name or not card_uid:
+        return jsonify({"error": "Missing required fields: name, card_uid"}), 400
+
+    try:
+        resp = supabase.table("staff").insert({
+            "name":       name,
+            "card_uid":   card_uid,
+            "staff_code": staff_code,
+        }).execute()
+        staff = resp.data[0] if resp.data else {}
+        _log("API_STAFF_CREATE", f"Created staff {name} card={card_uid}")
+        return jsonify(staff), 201
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+            return jsonify({"error": "Card UID or staff code already in use"}), 409
+        _log("API_STAFF_ERROR", f"Failed to create staff: {e}")
+        return jsonify({"error": "Failed to create staff"}), 500
+
+
+@app.route("/api/staff/<staff_id>", methods=["PUT"])
+def update_staff(staff_id):
+    """Update a staff member's details."""
+    data = request.get_json(force=True)
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    update_fields = {}
+    if "name" in data:
+        update_fields["name"] = data["name"].strip()
+    if "card_uid" in data:
+        update_fields["card_uid"] = data["card_uid"].strip().upper()
+    if "staff_code" in data:
+        update_fields["staff_code"] = data["staff_code"].strip() or None
+
+    if not update_fields:
+        return jsonify({"error": "No fields to update"}), 400
+
+    try:
+        resp = supabase.table("staff").update(update_fields).eq("id", staff_id).execute()
+        if not resp.data:
+            return jsonify({"error": "Staff not found"}), 404
+        _log("API_STAFF_UPDATE", f"Updated staff {staff_id}")
+        return jsonify(resp.data[0]), 200
+    except Exception as e:
+        error_msg = str(e)
+        if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+            return jsonify({"error": "Card UID or staff code already in use"}), 409
+        _log("API_STAFF_ERROR", f"Failed to update staff: {e}")
+        return jsonify({"error": "Failed to update staff"}), 500
+
+
+@app.route("/api/staff/<staff_id>", methods=["DELETE"])
+def delete_staff(staff_id):
+    """Delete a staff member."""
+    try:
+        resp = supabase.table("staff").delete().eq("id", staff_id).execute()
+        if not resp.data:
+            return jsonify({"error": "Staff not found"}), 404
+        _log("API_STAFF_DELETE", f"Deleted staff {staff_id}")
+        return jsonify({"status": "ok", "message": "Staff deleted"}), 200
+    except Exception as e:
+        _log("API_STAFF_ERROR", f"Failed to delete staff: {e}")
+        return jsonify({"error": "Failed to delete staff"}), 500
+
+
 @app.route("/api/set-staff-language", methods=["POST"])
 def set_staff_language():
     """
@@ -816,6 +984,10 @@ def recent_sessions():
     Returns a dict keyed by room_id with session info including staff and duration.
     """
     try:
+        # Fetch all staff for name lookup
+        staff_resp = supabase.table("staff").select("id, name").execute()
+        staff_map = {s["id"]: s["name"] for s in (staff_resp.data or [])}
+
         # Fetch all completed sessions ordered by room and end_time
         resp = supabase.table("sessions").select("*").eq("status", "ready").order("room", desc=False).order("end_time", desc=True).execute()
         
@@ -839,9 +1011,12 @@ def recent_sessions():
                     except Exception as e:
                         _log("SESSION_TIME_ERROR", f"Failed to parse timestamps: {e}")
                 
+                staff_name = staff_map.get(session.get("staff_id", ""), None)
                 sessions_by_room[room_id] = {
                     "id": session.get("id"),
                     "card_uid": session.get("card_uid"),
+                    "staff_id": session.get("staff_id"),
+                    "staff_name": staff_name,
                     "room": room_id,
                     "start_time": start_time,
                     "end_time": end_time,
