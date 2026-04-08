@@ -761,22 +761,6 @@ void drawHomeScreen() {
     zoneFns[i](cx,cy-4,COL_WHITE);
   }
 
-  // Add "Scan a room" text if no zones completed yet
-  bool anyCompleted = false;
-  for(int i=0; i<NUM_ZONES; i++) {
-    if(zoneCompleted[i]) {
-      anyCompleted = true;
-      break;
-    }
-  }
-
-  if(!anyCompleted) {
-    tft.setTextColor(COL_FADED);
-    tft.setTextSize(2);
-    int textW = strlen("Scan a room") * 12;
-    tft.setCursor((480 - textW) / 2, 260);
-    tft.print("Scan a room");
-  }
 }
 
 // ── CHECKLIST SCREEN ─────────────────────────────────────────
