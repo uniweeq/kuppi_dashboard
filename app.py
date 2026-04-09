@@ -295,6 +295,41 @@ def receive_scan():
     _log("SCAN", f"room={room} area={area} card={card_uid} session={session_id}")
     notify_clients("scan", {"room": room, "area": area})
 
+    # ── Auto-transition: if ALL zones are now scanned, move to awaiting_approval ──
+    all_scans_resp = (
+        supabase.table("scans")
+        .select("area")
+        .eq("session_id", session_id)
+        .execute()
+    )
+    scanned_areas = {s["area"] for s in (all_scans_resp.data or [])}
+
+    if scanned_areas.issuperset(set(ZONES)):
+        # All zones complete — close the session automatically
+        end_time = datetime.now(timezone.utc)
+        start_time_resp = (
+            supabase.table("sessions")
+            .select("start_time")
+            .eq("id", session_id)
+            .limit(1)
+            .execute()
+        )
+        start_time_str = start_time_resp.data[0]["start_time"] if start_time_resp.data else None
+        duration_mins = 0
+        if start_time_str:
+            start_time = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+            duration_mins = int((end_time - start_time).total_seconds() / 60)
+
+        supabase.table("sessions").update({
+            "status":        "awaiting_approval",
+            "end_time":      end_time.isoformat(),
+        }).eq("id", session_id).execute()
+
+        _log("SESSION_AUTO_CLOSE",
+             f"room={room} card={card_uid} — all {TOTAL_ZONES} zones scanned, "
+             f"auto-transitioning to awaiting_approval (duration={duration_mins}min)")
+        notify_clients("session_close", {"room": room, "status": "awaiting_approval"})
+
     return jsonify({
         "status": "ok",
         "scan": scan_resp.data[0] if scan_resp.data else {}
@@ -424,7 +459,6 @@ def close_session():
     supabase.table("sessions").update({
         "status":       status,
         "end_time":     end_time.isoformat(),
-        "duration_mins": duration_mins,
     }).eq("id", session_id).execute()
 
     missing = sorted(set(ZONES) - scanned_areas)
@@ -1334,7 +1368,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
                 .execute()
             )
             scanned = {s["area"] for s in (scans_resp.data or [])}
-            status = "awaiting_approval" if scanned.issuperset(set(ZONES)) else "incomplete"
+            status = "awaiting_approval"
             missing = sorted(set(ZONES) - scanned)
 
             # Calculate duration in minutes
@@ -1345,7 +1379,6 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             supabase.table("sessions").update({
                 "status":       status,
                 "end_time":     end_time.isoformat(),
-                "duration_mins": duration_mins,
             }).eq("id", session_id).execute()
 
             _log("SESSION_CLOSE",
@@ -1356,7 +1389,7 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             # First tap — open a new session
             # Close any stale sessions for this room first
             supabase.table("sessions").update({
-                "status":   "incomplete",
+                "status":   "awaiting_approval",
                 "end_time": _now_iso(),
             }).eq("room", room).eq("status", "cleaning").execute()
 
