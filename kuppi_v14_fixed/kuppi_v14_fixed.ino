@@ -112,6 +112,11 @@ volatile bool pendingRoomLookup   = false;
 char roomLookupUID[20]            = "";
 volatile bool roomLookupDone      = false;
 volatile bool roomLookupSuccess   = false;
+char roomStatus[32]               = "";   // status from server (e.g. "available", "awaiting_approval")
+
+// Session open state (to detect 409 blocked)
+volatile bool sessionOpenDone     = false;
+volatile bool sessionOpenBlocked  = false;
 
 
 // ── TIMER ───────────────────────────────────────────────────
@@ -266,6 +271,14 @@ void sendSessionOpen() {
   http.setTimeout(3000);
   int code = http.POST(payload);
   Serial.print("[HTTP] Session open: "); Serial.println(code);
+  if (code == 409) {
+    // Room is awaiting_approval or ready — blocked
+    Serial.println("[HTTP] Session blocked by server (409)");
+    sessionOpenBlocked = true;
+  } else {
+    sessionOpenBlocked = false;
+  }
+  sessionOpenDone = true;
   http.end();
 }
 
@@ -307,12 +320,21 @@ void sendRoomLookup() {
     DeserializationError err = deserializeJson(doc, response);
     if (!err) {
       const char* roomNum = doc["room_number"];
+      const char* status  = doc["status"];
       if (roomNum) {
         strncpy(activeRoom, roomNum, sizeof(activeRoom) - 1);
         activeRoom[sizeof(activeRoom) - 1] = '\0';
         roomIdentified = true;
         roomLookupSuccess = true;
-        Serial.print("[HTTP] Room found: "); Serial.println(activeRoom);
+        // Capture room status
+        if (status) {
+          strncpy(roomStatus, status, sizeof(roomStatus) - 1);
+          roomStatus[sizeof(roomStatus) - 1] = '\0';
+        } else {
+          strcpy(roomStatus, "available");
+        }
+        Serial.print("[HTTP] Room found: "); Serial.print(activeRoom);
+        Serial.print(" status: "); Serial.println(roomStatus);
       } else {
         roomLookupSuccess = false;
       }
@@ -648,6 +670,47 @@ void drawRoomNotFoundScreen() {
   int w2 = strlen(line2) * 12;
   tft.setCursor((480 - w2) / 2, cy + 95);
   tft.print(line2);
+}
+
+void drawRoomBlockedScreen() {
+  tft.fillScreen(COL_BG);
+  drawHeader("KUPPI", "v4", "", false);
+  drawTimerBorder();
+
+  int cx = 240, cy = 110;
+
+  // Orange/yellow warning circle
+  uint16_t COL_WARN = tft.color565(255, 180, 0);
+  uint16_t COL_WARN_DARK = tft.color565(180, 120, 0);
+  tft.fillCircle(cx, cy, 48, COL_WARN);
+  tft.fillCircle(cx, cy, 42, COL_WARN_DARK);
+
+  // Exclamation mark
+  tft.fillRoundRect(cx - 4, cy - 22, 8, 28, 3, COL_WHITE);
+  tft.fillCircle(cx, cy + 14, 5, COL_WHITE);
+
+  // Room number
+  tft.setTextColor(COL_WARN);
+  tft.setTextSize(3);
+  char roomLabel[32];
+  snprintf(roomLabel, sizeof(roomLabel), "Room %s", activeRoom);
+  int w1 = strlen(roomLabel) * 18;
+  tft.setCursor((480 - w1) / 2, cy + 58);
+  tft.print(roomLabel);
+
+  tft.setTextColor(COL_WHITE);
+  tft.setTextSize(2);
+  const char* line2 = "Already cleaned";
+  int w2 = strlen(line2) * 12;
+  tft.setCursor((480 - w2) / 2, cy + 92);
+  tft.print(line2);
+
+  tft.setTextColor(COL_FADED);
+  tft.setTextSize(2);
+  const char* line3 = "Awaiting supervisor approval";
+  int w3 = strlen(line3) * 12;
+  tft.setCursor((480 - w3) / 2, cy + 120);
+  tft.print(line3);
 }
 
 // ── STAFF LOGIN SCREENS ──────────────────────────────────────
@@ -1119,7 +1182,29 @@ void loop() {
     if(roomLookupDone) {
       roomLookupDone = false;
       if(roomLookupSuccess) {
-        // Room found! Show success then go to home screen
+        // Check if room is already cleaned (awaiting_approval or ready)
+        if (strcmp(roomStatus, "awaiting_approval") == 0 || strcmp(roomStatus, "ready") == 0) {
+          Serial.print("[ROOM] Blocked — room "); Serial.print(activeRoom);
+          Serial.print(" is '"); Serial.print(roomStatus); Serial.println("'");
+          buzzOnce();
+          drawRoomBlockedScreen();
+          delay(3000);
+          // Reset ALL room/lookup state to prevent stale duplicate lookups
+          roomIdentified     = false;
+          activeRoom[0]      = '\0';
+          roomStatus[0]      = '\0';
+          roomLookupDone     = false;
+          roomLookupSuccess  = false;
+          pendingRoomLookup  = false;
+          pendingSessionOpen = false;
+          sessionOpenDone    = false;
+          sessionOpenBlocked = false;
+          currentScreen      = SCREEN_SCAN_ROOM;
+          drawScanRoomScreen();
+          return;
+        }
+
+        // Room found and available! Show success then go to home screen
         buzzComplete();
         drawRoomFoundScreen();
         delay(1500);

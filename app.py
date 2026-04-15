@@ -163,12 +163,28 @@ def room_lookup(nfc_uid: str):
             return jsonify({"error": "Room not found for this NFC tag"}), 404
 
         room = resp.data[0]
-        _log("ROOM_LOOKUP", f"nfc_uid={nfc_uid} → room={room['room_number']}")
+        room_number = room["room_number"]
+
+        # Also check the cleaning session status for this room
+        session_resp = (
+            supabase.table("sessions")
+            .select("status")
+            .eq("room", room_number)
+            .in_("status", ["cleaning", "awaiting_approval", "ready"])
+            .order("start_time", desc=True)
+            .limit(1)
+            .execute()
+        )
+        cleaning_status = "not_cleaned"
+        if session_resp.data:
+            cleaning_status = session_resp.data[0]["status"]
+
+        _log("ROOM_LOOKUP", f"nfc_uid={nfc_uid} → room={room_number} cleaning_status={cleaning_status}")
         return jsonify({
-            "room_number": room["room_number"],
-            "floor":       room.get("floor", ""),
-            "room_type":   room.get("room_type", ""),
-            "status":      room.get("status", "available"),
+            "room_number":     room_number,
+            "floor":           room.get("floor", ""),
+            "room_type":       room.get("room_type", ""),
+            "status":          cleaning_status,
         }), 200
 
     except Exception as e:
@@ -378,6 +394,26 @@ def open_session():
             )
             if lookup.data:
                 resolved_staff_id = lookup.data[0]["id"]
+
+    # Block session if room is already awaiting_approval or ready
+    blocked_session = (
+        supabase.table("sessions")
+        .select("id, status")
+        .eq("room", room)
+        .in_("status", ["awaiting_approval", "ready"])
+        .order("start_time", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if blocked_session.data:
+        current_status = blocked_session.data[0]["status"]
+        _log("SESSION_BLOCKED",
+             f"room={room} card={card_uid} — cannot open session, room is '{current_status}'")
+        return jsonify({
+            "error": f"Room {room} is currently '{current_status}'. A new session cannot be started until the supervisor resets the room.",
+            "room": room,
+            "current_status": current_status,
+        }), 409
 
     # Close any previously open session for this room before opening new one
     supabase.table("sessions").update({
@@ -1386,6 +1422,22 @@ def _handle_door_tap(card_uid: str, room: str = None) -> None:
             notify_clients("session_close", {"room": room, "status": status})
 
         else:
+            # Block session if room is already awaiting_approval or ready
+            blocked_session = (
+                supabase.table("sessions")
+                .select("id, status")
+                .eq("room", room)
+                .in_("status", ["awaiting_approval", "ready"])
+                .order("start_time", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if blocked_session.data:
+                current_status = blocked_session.data[0]["status"]
+                _log("SESSION_BLOCKED",
+                     f"room={room} card={card_uid} — cannot open session, room is '{current_status}'")
+                return
+
             # First tap — open a new session
             # Close any stale sessions for this room first
             supabase.table("sessions").update({
