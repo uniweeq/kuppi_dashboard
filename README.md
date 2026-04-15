@@ -40,12 +40,20 @@ A supervisor monitors live cleaning progress through a real-time web dashboard.
 
 ```
 not_cleaned ──► cleaning ──► awaiting_approval ──► ready
+                    │                  ▲
+                    │   (all 6 zones   │
+                    └──  scanned, auto-┘
+                         transition)
 ```
 
 - **not_cleaned** — display-only; no session exists for the room
 - **cleaning** — active session, staff scanning zone tags
-- **awaiting_approval** — session closed, waiting for supervisor approval
+- **awaiting_approval** — all zones scanned (auto) or session manually closed; waiting for supervisor approval
 - **ready** — supervisor approved, room is ready for guests
+
+> **Session blocking:** Once a room reaches `awaiting_approval` or `ready`, no new cleaning session can be started until the supervisor resets the room. Attempting to open a session returns **409 Conflict**.
+
+> **Auto-transition:** When the final zone tag is scanned, the session automatically closes and transitions to `awaiting_approval` — no manual `/session/close` call is required.
 
 ---
 
@@ -235,10 +243,11 @@ Receives a scan event from a KUPPI card device.
 **Behaviour:**
 - If `area` is `"DOOR"` — looks up `tag_uid` in the `rooms` table. If found, triggers a door-tap toggle (open/close session). If not found, logs to `unknown_scans` and returns **400**.
 - If `area` is a zone name — validates against the six known zones. Returns **400** if the zone is unknown or no active session exists. Returns **200** with `"already_scanned"` for duplicate scans within the same session. Returns **201** on successful scan insertion.
+- **Auto-transition:** if this scan completes all 6 zones, the session is automatically closed and set to `awaiting_approval`. The response includes `"auto_closed": true` and the `missing` / `scanned` zone lists.
 
 #### `POST /session/open`
 
-Opens a new cleaning session. Any previously active session for the same room is automatically closed as `awaiting_approval`.
+Opens a new cleaning session. Any previously active `cleaning` session for the same room is automatically closed as `awaiting_approval` first.
 
 **Body (JSON):**
 ```json
@@ -250,6 +259,8 @@ Opens a new cleaning session. Any previously active session for the same room is
 ```
 
 > `staff_id` is optional. Accepts either a UUID (direct FK) or a card UID string (resolved via staff table lookup).
+
+**Returns 409 Conflict** if the room already has an `awaiting_approval` or `ready` session. The supervisor must reset the room before a new session can be started.
 
 #### `POST /session/close`
 
@@ -335,12 +346,15 @@ Look up a room by its door NFC tag UID. Used by the KUPPI device when staff scan
 **Response (200):**
 ```json
 {
-  "room_number": "301",
-  "floor":       "3",
-  "room_type":   "Suite",
-  "status":      "available"
+  "room_number":     "301",
+  "floor":           "3",
+  "room_type":       "Suite",
+  "status":          "available",
+  "cleaning_status": "not_cleaned"
 }
 ```
+
+`cleaning_status` reflects the most recent session state (`not_cleaned`, `cleaning`, `awaiting_approval`, or `ready`).
 
 ---
 
@@ -427,11 +441,11 @@ Creates fake test data covering all session statuses (`not_cleaned`, `cleaning`,
 
 ### Device Boot Flow
 
-1. **Staff Login** — Staff taps their personal NFC card → device calls `GET /api/staff-lookup/<card_uid>` to identify them.
-2. **Room Identification** — Staff scans the room's door NFC tag → device calls `GET /api/room-lookup/<nfc_uid>` to resolve the room number.
-3. **Session Start** — Device calls `POST /session/open` (with `staff_id`), starts the 25-minute countdown timer.
+1. **Staff Login** — Staff taps their personal NFC card → device calls `GET /api/staff-lookup/<card_uid>` to identify them and display their name.
+2. **Room Identification** — Staff scans the room's door NFC tag → device calls `GET /api/room-lookup/<nfc_uid>` to resolve the room number and current cleaning status.
+3. **Session Start** — Device calls `POST /session/open` (with `staff_id`), starts the 25-minute countdown timer. Returns **409** if the room is `awaiting_approval` or `ready` — the device shows an error and cannot start.
 4. **Zone Scanning** — Staff taps each of the 6 zone NFC tags → device calls `POST /scan` for each and checks off the zone on the touchscreen checklist.
-5. **Session End** — When all 6 zones are complete (or timer expires), device calls `POST /session/close` and shows the completion screen.
+5. **Session End (auto)** — When the final zone is scanned, the backend automatically closes the session and transitions to `awaiting_approval`. The device detects `"auto_closed": true` in the scan response and shows the completion screen. No explicit `/session/close` call is needed.
 
 ---
 
@@ -503,8 +517,8 @@ Also update `zoneUIDs` with the actual UID bytes read from your NFC tags for the
 
 A USB RFID reader is plugged into the computer running `app.py`. The background thread implements a **tap-to-toggle** model:
 
-- **First tap** — opens a new `cleaning` session for the room. Any previously stale active session is closed as `incomplete` first.
-- **Second tap** — closes the session. Status is set to `awaiting_approval` if all six zones were scanned, otherwise `incomplete`.
+- **First tap** — opens a new `cleaning` session for the room. Any previously stale `cleaning` session is closed as `awaiting_approval` first. If the room is already `awaiting_approval` or `ready`, the tap is silently ignored — the supervisor must reset the room.
+- **Second tap** — closes the session and always sets status to `awaiting_approval`.
 
 On **Windows** the `keyboard` library captures the HID key sequence emitted by the USB reader and assembles the UID from keystrokes terminated by Enter. On **Linux / Mac** the `evdev` library reads raw key events from the device specified by `RFID_DEVICE`.
 
