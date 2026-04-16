@@ -86,8 +86,8 @@ kuppi_dashboard/
 │   └── settings.html           # System settings page
 ├── supabase/
 │   └── schema.sql              # Database schema, views, triggers & seed data
-└── kuppi_v14_fixed/
-    └── kuppi_v14_fixed.ino     # ESP32 Arduino firmware for the KUPPI card
+└── kuppi_firmware/
+    └── kuppi_firmware.ino      # ESP32 Arduino firmware for the KUPPI card
 ```
 
 ---
@@ -451,7 +451,7 @@ Creates fake test data covering all session statuses (`not_cleaned`, `cleaning`,
 
 ## KUPPI Card Firmware
 
-The `kuppi_v14_fixed/kuppi_v14_fixed.ino` sketch runs on an **ESP32** with a TFT display, a PN532 NFC reader (I2C), and a buzzer. It provides a touchscreen checklist UI, reads NFC tags in the six room zones, and sends HTTP requests to the Flask backend.
+The `kuppi_firmware/kuppi_firmware.ino` sketch runs on an **ESP32** with a TFT display, a PN532 NFC reader (I2C), and a buzzer. It provides a touchscreen checklist UI, reads NFC tags in the six room zones, and sends HTTP requests to the Flask backend.
 
 ### Hardware Required
 
@@ -473,7 +473,7 @@ The `kuppi_v14_fixed/kuppi_v14_fixed.ino` sketch runs on an **ESP32** with a TFT
 
 ### Firmware Configuration
 
-Open `kuppi_v14_fixed/kuppi_v14_fixed.ino` and edit the constants near the top:
+Open `kuppi_firmware/kuppi_firmware.ino` and edit the constants near the top:
 
 ```cpp
 const char* WIFI_SSID     = "YourNetwork";
